@@ -1,0 +1,8 @@
+[package]
+name = "person"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+paper = { path="../paper" }
+anyhow = "*"
