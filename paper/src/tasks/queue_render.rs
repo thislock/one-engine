@@ -6,7 +6,7 @@ pub struct QueueRender {
 }
 
 impl Task for QueueRender {
-    fn get_importance(&self) -> crate::tasks::TaskType {
+    fn get_type(&self) -> crate::tasks::TaskType {
         TaskType::LOOPING
     }
     fn run_task(
@@ -20,7 +20,8 @@ impl Task for QueueRender {
         
         self.window.request_redraw();
         
-        messages.self_sender.send(tasks::ToTask::Schedule(Instant::now().checked_add(Duration::from_secs_f32(1.0/60.0)).unwrap()))?;
+        let next = Instant::now().checked_add(Duration::from_secs_f32(1.0/60.0)).unwrap_or(Instant::now());
+        messages.self_sender.send(tasks::ToTask::Schedule(next))?;
 
         Ok(())
     }

@@ -10,7 +10,7 @@ pub struct TaskMessenger {
 }
 
 pub trait Task {
-    fn get_importance(&self) -> TaskType;    
+    fn get_type(&self) -> TaskType;    
     fn run_task(
         &mut self,
         message: &mut TaskMessenger,
@@ -73,7 +73,7 @@ fn spawn_task(mut task: Box<dyn Task + Send>, self_sender: Sender<ToTask>, sende
                     let _task_result = task.run_task(
                         &mut messages,
                         // way to much code, i know. i just don't care.
-                        Instant::now().checked_duration_since(last_time_ran).unwrap_or(Duration::from_secs_f32(1.0/60.0)).as_secs_f32()
+                        Instant::now().checked_duration_since(last_time_ran).unwrap().as_secs_f32(),
                     );
                     last_time_ran = Instant::now();
                 }
@@ -155,7 +155,7 @@ fn spawn_adam(window: Arc<winit::window::Window>, adam_reciever: Receiver<ToAdam
                         },
 
                         ToAdam::AddTask(new_task) => {
-                            let task_type = new_task.get_importance();
+                            let task_type = new_task.get_type();
                             let task = TaskTracker::new(new_task);
                             
                             match task_type {
@@ -191,25 +191,6 @@ impl TaskService {
         Self {
             send_adam, recieve_adam,
         }
-    }
-
-    // this will close the eternal adam task, only do this when closing the entire program
-    pub fn close_adam(&self) {
-
-        let send_message = || self.send_adam.send(ToAdam::Exit);
-
-        let mut tries = 0;
-        let max_tries = 100;
-        println!("attempting to close adam...");
-        while let Err(adam_result) = send_message() {
-            print!("\rfailed to close adam {} out of {} tries", tries, max_tries);
-            tries+=1;
-            if tries > max_tries {
-                println!("after {} tries, the error: {}; was emmited", max_tries, adam_result);
-                break;
-            }
-        }
-        println!("sucessfully closed adam after {} tries.", tries);
     }
 
 }

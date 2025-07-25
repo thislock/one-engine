@@ -183,21 +183,22 @@ pub struct GpuCamera {
     pub camera_controller: CameraController,
 }
 
-impl Task for GpuCamera {
-    fn get_importance(&self) -> crate::tasks::TaskType {
-        return crate::tasks::TaskType::LOOPING;
-    }
-    fn run_task(
-            &mut self,
-            messages: &mut TaskMessenger,
-            // the time since the function was ran last
-            delta_time: f32,
-        ) -> anyhow::Result<()> 
-    {
-        self.update_camera(delta_time);
-        Ok(())
-    }
-}
+// impl Task for GpuCamera {
+//     fn get_importance(&self) -> crate::tasks::TaskType {
+//         return crate::tasks::TaskType::LOOPING;
+//     }
+//     fn run_task(
+//             &mut self,
+//             messages: &mut TaskMessenger,
+//             // the time since the function was ran last
+//             delta_time: f32,
+//         ) -> anyhow::Result<()> 
+//     {
+//         self.update_camera(delta_time);
+//         println!("sojgfijfhgihidfg");
+//         Ok(())
+//     }
+// }
 
 impl GpuCamera {
 

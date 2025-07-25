@@ -10,6 +10,7 @@ use winit::{
     window::Window,
 };
 
+
 // binds everything together
 #[path = "1engine.rs"]
 mod engine;
@@ -73,7 +74,6 @@ impl ApplicationHandler<engine::Engine> for App {
         match event {
             
             WindowEvent::CloseRequested => {
-                engine.task_service.close_adam();
                 event_loop.exit();
             },
             
