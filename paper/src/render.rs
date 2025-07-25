@@ -1,8 +1,6 @@
 use std::iter;
-use anyhow::Ok;
 use wgpu::RenderPass;
-use crate::{gpu_bindgroups, gpu_pipeline, device_drivers, gpu_geometry, gpu_texture, m_camera};
-
+use crate::{device_drivers, engine, gpu_geometry, gpu_texture};
 
 pub struct RenderTask {
     pub mesh: gpu_geometry::Mesh,
@@ -42,38 +40,38 @@ impl RenderTask {
         })
     }
     
-    pub fn render(&mut self, camera: &m_camera::GpuCamera, drivers: &device_drivers::Drivers, pipeline: &gpu_pipeline::PipelineData, texture_bundle: &gpu_texture::TextureBundle) -> std::result::Result<(), wgpu::SurfaceError> {
+    pub fn render(&self, engine: &engine::Engine) -> std::result::Result<(), wgpu::SurfaceError> {
 
-        let output = drivers.surface.get_current_texture()?;
-        let mut encoder = self.init_encoder(drivers);
+        let output = engine.drivers.surface.get_current_texture()?;
+        let mut encoder = self.init_encoder(&engine.drivers);
         let mut render_pass = self.init_render_pass(&output, &mut encoder);
 
         // tell the gpu what buffers to render
-        self.render_buffers(&mut render_pass, camera, pipeline, texture_bundle);
+        self.render_buffers(&mut render_pass, &engine);
 
         // everything is already passed to the gpu,
         // so we free this to avoid borrow issues
         drop(render_pass);
-        
-        self.finish_rendering(output, encoder, drivers);
 
-        std::result::Result::Ok(())
+        engine.render_task.finish_rendering(output, encoder, &engine.drivers);
+
+        Ok(())
     }
     
-    fn render_buffers(&mut self, render_pass: &mut RenderPass<'_>, camera: &m_camera::GpuCamera, pipeline: &gpu_pipeline::PipelineData, texture_bundle: &gpu_texture::TextureBundle) {
+    fn render_buffers(&self, render_pass: &mut RenderPass<'_>, engine: &engine::Engine) {
 
-        render_pass.set_pipeline(&pipeline.render_pipeline);
+        render_pass.set_pipeline(&engine.data_pipeline.render_pipeline);
         
         render_pass.set_vertex_buffer(0, self.mesh.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
         
-        render_pass.set_bind_group(0, texture_bundle.get_diffuse_bind_group("yees"), &[]);
-        render_pass.set_bind_group(1, &camera.camera_bind_group, &[]);
+        render_pass.set_bind_group(0, engine.texture_bundle.get_diffuse_bind_group("yees"), &[]);
+        render_pass.set_bind_group(1, &engine.camera.camera_bind_group, &[]);
 
         render_pass.draw_indexed(0..self.mesh.num_indicies, 0, 0..1);
     }
     
-    fn finish_rendering(&mut self, output: wgpu::SurfaceTexture, encoder: wgpu::CommandEncoder, drivers: &device_drivers::Drivers) {
+    fn finish_rendering(&self, output: wgpu::SurfaceTexture, encoder: wgpu::CommandEncoder, drivers: &device_drivers::Drivers) {
         drivers.queue.submit(iter::once(encoder.finish()));
         output.present();
     }

@@ -3,9 +3,6 @@ name = "paper"
 version = "0.1.0"
 edition = "2021"
 
-[profile.release]
-strip = true
-
 [dependencies]
 anyhow = "1.0.98"
 bytemuck = "1.23.1"

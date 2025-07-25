@@ -2,7 +2,7 @@ use cgmath::{EuclideanSpace, Vector3};
 use wgpu::util::DeviceExt;
 use winit::{dpi::PhysicalSize, event::{ElementState, KeyEvent, WindowEvent}, keyboard::{KeyCode, PhysicalKey}};
 
-use crate::{m_camera, m_uniform_buffer, tickrate};
+use crate::{camera, camera_uniform_buffer, tasks::{Task, TaskMessenger}, tickrate};
 
 
 #[rustfmt::skip]
@@ -35,7 +35,6 @@ impl Camera {
         return proj * view;
     }
 }
-
 
 pub struct CameraController {
     speed: f32,
@@ -176,18 +175,34 @@ impl CameraController {
 }
 
 pub struct GpuCamera {
-    pub camera: m_camera::Camera,
-    pub camera_uniform: m_uniform_buffer::CameraUniform,
+    pub camera: camera::Camera,
+    pub camera_uniform: camera_uniform_buffer::CameraUniform,
     pub camera_buffer: wgpu::Buffer,
     pub camera_bind_group: wgpu::BindGroup,
     pub camera_bind_group_layout: wgpu::BindGroupLayout,
     pub camera_controller: CameraController,
 }
 
+impl Task for GpuCamera {
+    fn get_importance(&self) -> crate::tasks::TaskType {
+        return crate::tasks::TaskType::LOOPING;
+    }
+    fn run_task(
+            &mut self,
+            messages: &mut TaskMessenger,
+            // the time since the function was ran last
+            delta_time: f32,
+        ) -> anyhow::Result<()> 
+    {
+        self.update_camera(delta_time);
+        Ok(())
+    }
+}
+
 impl GpuCamera {
 
     pub fn new(device: &wgpu::Device, size: PhysicalSize<u32>) -> Self {
-        let camera = m_camera::Camera {
+        let camera = camera::Camera {
             // position the camera 1 unit up and 2 units back
             // +z is out of the screen
             eye: (0.0, 1.0, 2.0).into(),
@@ -201,7 +216,7 @@ impl GpuCamera {
             zfar: 100.0,
         };
     
-        let mut camera_uniform = m_uniform_buffer::CameraUniform::new();
+        let mut camera_uniform = camera_uniform_buffer::CameraUniform::new();
         camera_uniform.update_view_proj(&camera);
     
         let camera_buffer = device.create_buffer_init(
@@ -251,8 +266,8 @@ impl GpuCamera {
         }
     }
 
-    pub fn update_camera(&mut self, tickrate: &tickrate::Tickrate) {
-        self.camera_controller.speed = self.camera_controller.base_speed * tickrate.get_delta();
+    pub fn update_camera(&mut self, delta: f32) {
+        self.camera_controller.speed = self.camera_controller.base_speed * delta;
         self.camera_controller.update_camera(&mut self.camera);
     }
 

@@ -14,15 +14,18 @@ use winit::{
 #[path = "1engine.rs"]
 mod engine;
 
+#[path="tasks/lib.rs"]
+mod task_lib;
+
 mod device_drivers;
 
 mod gpu_texture;
 mod gpu_geometry;
-mod m_camera;
-mod m_uniform_buffer;
+mod camera;
+mod camera_uniform_buffer;
 
 mod tasks;
-mod task_render;
+mod render;
 
 mod gpu_bindgroups;
 mod gpu_pipeline;
@@ -30,11 +33,11 @@ mod gpu_pipeline;
 mod tickrate;
 mod z_missing_texture;
 
-struct App<'a> {
-    engine: Option<engine::Engine<'a>>,
+struct App {
+    engine: Option<engine::Engine>,
 }
 
-impl<'a> App<'a> {
+impl App {
     fn new() -> Self {
         Self {
             engine: None,
@@ -42,16 +45,17 @@ impl<'a> App<'a> {
     }
 }
 
-impl ApplicationHandler<engine::Engine<'static>> for App<'_> {
 
+impl ApplicationHandler<engine::Engine> for App {
+    
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let window_attributes = Window::default_attributes();
         let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
-
+        
         self.engine = Some(pollster::block_on(engine::Engine::new(window)));
     }
 
-    fn user_event(&mut self, _event_loop: &ActiveEventLoop, engine: engine::Engine<'static>) {
+    fn user_event(&mut self, _event_loop: &ActiveEventLoop, engine: engine::Engine) {
         self.engine = Some(engine);
     }
 
@@ -68,7 +72,10 @@ impl ApplicationHandler<engine::Engine<'static>> for App<'_> {
 
         match event {
             
-            WindowEvent::CloseRequested => event_loop.exit(),
+            WindowEvent::CloseRequested => {
+                engine.task_service.close_adam();
+                event_loop.exit();
+            },
             
             WindowEvent::Resized(size) => engine.resize(size.width, size.height),
 
@@ -78,15 +85,16 @@ impl ApplicationHandler<engine::Engine<'static>> for App<'_> {
             WindowEvent::CursorMoved { position, .. } => {
             }
 
+
             WindowEvent::KeyboardInput {
                 event:
                     KeyEvent {
-                        physical_key: PhysicalKey::Code(code),
-                        state: key_state,
+                        physical_key: PhysicalKey::Code(_code),
+                        state: _key_state,
                         ..
                     },
                 ..
-            } => engine.handle_key(event_loop, code, key_state.is_pressed(), &event),
+            } => engine.handle_key(&event),
             _ => {}
         }
     }
@@ -116,27 +124,33 @@ impl ApplicationHandler<engine::Engine<'static>> for App<'_> {
         let _ = event_loop;
     }
     
+    // at the time of writing this, this is only for mobile devices (ios, android)
     fn memory_warning(&mut self, event_loop: &ActiveEventLoop) {
         let _ = event_loop;
     }
+
 }
 
 fn on_redraw(engine: &mut engine::Engine) {
     engine.update();
 
-    match engine.render_task.render(&engine.camera, &engine.drivers, &engine.data_pipeline, &engine.texture_bundle) {
+    match engine.render_task.render(&engine) {
+
         Ok(_) => {}
         // Reconfigure the surface if it's lost or outdated
+        
         Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
             let size = engine.get_window().inner_size();
             engine.resize(size.width, size.height);
         }
+        
         Err(e) => {
             log::error!("Unable to render {}", e);
         }
+    
     }
-    engine.tickrate.tick_sleep();
-    engine.get_window().request_redraw();
+
+    engine.tickrate.tick();
 }
 
 pub fn run() -> anyhow::Result<()> {

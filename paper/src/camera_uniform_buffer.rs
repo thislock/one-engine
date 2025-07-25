@@ -1,4 +1,4 @@
-use crate::m_camera;
+use crate::camera;
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -16,7 +16,7 @@ impl CameraUniform {
         }
     }
 
-    pub fn update_view_proj(&mut self, camera: &m_camera::Camera) {
+    pub fn update_view_proj(&mut self, camera: &camera::Camera) {
         self.view_proj = camera.build_view_projection_matrix().into();
     }
 }
