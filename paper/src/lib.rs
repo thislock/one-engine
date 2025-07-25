@@ -159,7 +159,7 @@ pub fn run() -> anyhow::Result<()> {
 
     let event_loop = EventLoop::with_user_event().build()?;
     // tells the event loop to run in the background
-    event_loop.set_control_flow(winit::event_loop::ControlFlow::Poll);
+    event_loop.set_control_flow(winit::event_loop::ControlFlow::Wait);
 
     let mut app = App::new();
     event_loop.run_app(&mut app)?;

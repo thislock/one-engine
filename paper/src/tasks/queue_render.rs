@@ -13,14 +13,12 @@ impl Task for QueueRender {
             &mut self,
             messages: &mut TaskMessenger,
             // the time since the function was ran last
-            delta_time: f32,
+            _delta_time: f32,
         ) -> anyhow::Result<()> 
-    {
-        let _ = delta_time;
-        
+    {        
         self.window.request_redraw();
         
-        let next = Instant::now().checked_add(Duration::from_secs_f32(1.0/60.0)).unwrap_or(Instant::now());
+        let next = Instant::now().checked_add(Duration::from_secs_f32(1.0/10.0)).unwrap_or(Instant::now());
         messages.self_sender.send(tasks::ToTask::Schedule(next))?;
 
         Ok(())

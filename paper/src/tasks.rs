@@ -63,11 +63,12 @@ struct TaskTracker {
 }
 
 fn spawn_task(mut task: Box<dyn Task + Send>, self_sender: Sender<ToTask>, sender: Sender<FromTask>, reciever: Receiver<ToTask>) {
-    
+
     thread::spawn(move || {
         let mut messages = TaskMessenger {sender, reciever, self_sender};
         let mut last_time_ran = Instant::now();
         while let Ok(message) = messages.reciever.recv() {
+            println!("new task cycle");
             match message {
                 ToTask::Exit => return,
                 ToTask::Schedule(at_time) => {
@@ -152,30 +153,24 @@ fn spawn_adam(window: Arc<winit::window::Window>, adam_reciever: Receiver<ToAdam
             tasks: vec![],
         };
 
-        loop {
-            match adam.adam_reciever.recv() {
-                Ok(recieved) => {
-
-                    match recieved {
-                        ToAdam::Exit => {
-                            println!("from adam: adam is closing.");
-                            return;
-                        },
-
-                        ToAdam::AddTask(new_task) => {
-                            let task_type = new_task.get_type();
-                            let task = TaskTracker::new(new_task);
-                            
-                            match task_type {
-                                TaskType::LOOPING => task.sender.send(ToTask::Schedule(Instant::now())).unwrap(),
-                            }
-
-                            adam.tasks.push(task);
-                        }
-                    }
-
+        while let Ok(recieved) = adam.adam_reciever.recv() {
+            match recieved {
+                
+                ToAdam::Exit => {
+                    println!("from adam: adam is closing.");
+                    return;
                 },
-                Err(error) => {println!("from adam: {}", error); return;},
+                
+                ToAdam::AddTask(new_task) => {
+                    let task_type = new_task.get_type();
+                    let task = TaskTracker::new(new_task);
+                    
+                    match task_type {
+                        TaskType::LOOPING => task.sender.send(ToTask::Schedule(Instant::now())).unwrap(),
+                    }
+                    adam.tasks.push(task);
+                }
+
             }
         }
     });
