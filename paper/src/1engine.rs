@@ -8,6 +8,7 @@ use crate::{camera, device_drivers, gpu_bindgroups, gpu_pipeline, gpu_texture, r
 pub struct Engine {
     pub data_pipeline: gpu_pipeline::PipelineData,
     
+    #[allow(unused)]
     pub data_bindgroups: gpu_bindgroups::BindGroups,
     pub texture_bundle: gpu_texture::TextureBundle,
     pub camera: camera::GpuCamera,

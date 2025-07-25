@@ -2,9 +2,11 @@ use cgmath::{EuclideanSpace, Vector3};
 use wgpu::util::DeviceExt;
 use winit::{dpi::PhysicalSize, event::{ElementState, KeyEvent, WindowEvent}, keyboard::{KeyCode, PhysicalKey}};
 
+#[allow(unused)]
 use crate::{camera, camera_uniform_buffer, tasks::{Task, TaskMessenger}, tickrate};
 
 
+#[allow(unused)]
 #[rustfmt::skip]
 pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::from_cols(
     cgmath::Vector4::new(1.0, 0.0, 0.0, 0.0),
@@ -123,6 +125,7 @@ impl CameraController {
         (rot + 1.0) * 180.0
     }
 
+    #[allow(unused)]
     pub fn print_vec_degrees(rot: &Vector3<f32>) {
         println!("x: {} y: {} z: {}", 
             Self::get_degrees(rot.x),

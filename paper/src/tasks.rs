@@ -3,6 +3,7 @@
 
 use std::{sync::{self, mpsc::{Receiver, Sender}, Arc}, thread, time::{Duration, Instant}};
 
+#[allow(unused)]
 pub struct TaskMessenger {
     pub sender: Sender<FromTask>, 
     pub reciever: Receiver<ToTask>,
@@ -26,6 +27,7 @@ pub enum TaskType {
     LOOPING,
 }
 
+#[allow(unused)]
 struct TimeInfo {
     running_time_history: [Option<std::time::Duration>; 128],
     history_tracker: usize,
@@ -45,12 +47,14 @@ impl Default for TimeInfo {
     }
 }
 
+#[allow(unused)]
 impl TimeInfo {
     fn end(&mut self) {
         todo!();
     }
 }
 
+#[allow(unused)]
 struct TaskTracker {
     time_info: TimeInfo,
     // transmit info
@@ -99,6 +103,7 @@ impl TaskTracker {
     }
 }
 
+#[allow(unused)]
 pub struct TaskService {
     // for sending and recieving data from adam
     send_adam: Sender<ToAdam>,
@@ -109,11 +114,13 @@ pub enum FromTask {
     
 }
 
+#[allow(unused)]
 pub enum ToTask {
     Exit,
     Schedule(std::time::Instant),
 }
 
+#[allow(unused)]
 pub enum ToAdam {
     // stop adam
     Exit,
@@ -124,6 +131,7 @@ pub enum FromAdam {
 
 }
 
+#[allow(unused)]
 struct Adam {
     adam_reciever: Receiver<ToAdam>, 
     adam_sender: Sender<FromAdam>,
