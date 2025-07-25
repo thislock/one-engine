@@ -85,11 +85,13 @@ fn spawn_task(mut task: Box<dyn Task + Send>, self_sender: Sender<ToTask>, sende
         }
 
     });
+
 }
 
 impl TaskTracker {
     fn new(task: Box<dyn Task + Send>) -> Self {
         
+        // create channels so both the task, and adam can communicate
         let (tx1, rx1) = sync::mpsc::channel::<ToTask>();
         let (tx2, rx2) = sync::mpsc::channel::<FromTask>();
         
