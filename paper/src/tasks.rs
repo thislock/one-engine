@@ -68,7 +68,6 @@ fn spawn_task(mut task: Box<dyn Task + Send>, self_sender: Sender<ToTask>, sende
         let mut messages = TaskMessenger {sender, reciever, self_sender};
         let mut last_time_ran = Instant::now();
         while let Ok(message) = messages.reciever.recv() {
-            println!("new task cycle");
             match message {
                 ToTask::Exit => return,
                 ToTask::Schedule(at_time) => {

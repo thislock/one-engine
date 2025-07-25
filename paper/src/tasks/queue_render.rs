@@ -17,8 +17,10 @@ impl Task for QueueRender {
         ) -> anyhow::Result<()> 
     {        
         self.window.request_redraw();
-        
-        let next = Instant::now().checked_add(Duration::from_secs_f32(1.0/10.0)).unwrap_or(Instant::now());
+
+        // TODO: vsync
+        let framerate: f32 = 60.0;
+        let next = Instant::now().checked_add(Duration::from_secs_f32(1.0/framerate)).unwrap_or(Instant::now());
         messages.self_sender.send(tasks::ToTask::Schedule(next))?;
 
         Ok(())
