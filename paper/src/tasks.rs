@@ -58,6 +58,10 @@ impl TimeInfo {
   }
 }
 
+// ******************************************************************** //
+// *************************** TASK TRACKER *************************** //
+// ******************************************************************** //
+
 #[allow(unused)]
 struct TaskTracker {
   time_info: TimeInfo,
@@ -66,32 +70,8 @@ struct TaskTracker {
   reciever: Receiver<FromTask>,
 }
 
-fn spawn_task(mut task: Box<dyn Task + Send>, self_sender: Sender<ToTask>, sender: Sender<FromTask>, reciever: Receiver<ToTask>) {
-  thread::spawn(move || {
-    let mut messages = TaskMessenger {sender, reciever, self_sender};
-    let mut last_time_ran = Instant::now();
-    while let Ok(message) = messages.reciever.recv() {
-      match message {
-        ToTask::Exit => return,
-        ToTask::Schedule(at_time) => {
-          // sleep until it's the scheduled time.
-          thread::sleep(at_time.duration_since(Instant::now()));
-          // run the function
-          let _task_result = task.run_task(
-            &mut messages,
-            // way to much code, i know. i just don't care.
-            Instant::now()
-              .checked_duration_since(last_time_ran).unwrap().as_secs_f32(),
-          );
-          last_time_ran = Instant::now();
-        }
-      }
-    }
-  });
-
-}
-
 impl TaskTracker {
+
   fn new(task: Box<dyn Task + Send>) -> Self {
       
     // create channels so both the task, and adam can communicate
@@ -105,64 +85,50 @@ impl TaskTracker {
       reciever: rx2,
     }
   }
+
 }
 
+fn spawn_task(mut task: Box<dyn Task + Send>, self_sender: Sender<ToTask>, sender: Sender<FromTask>, reciever: Receiver<ToTask>) {
+  
+  thread::spawn(move || {
+  
+    let mut messages = TaskMessenger {sender, reciever, self_sender};
+    let mut last_time_ran = Instant::now();
+  
+    while let Ok(message) = messages.reciever.recv() {
+      match message {
+  
+        ToTask::Exit => return,
+        ToTask::Schedule(at_time) => {
+          // sleep until it's the scheduled time.
+          thread::sleep(at_time.duration_since(Instant::now()));
+          // run the function
+          let _task_result = task.run_task(
+            &mut messages,
+            // way to much code, i know. i just don't care.
+            Instant::now()
+              .checked_duration_since(last_time_ran).unwrap().as_secs_f32(),
+          );
+          last_time_ran = Instant::now();
+        }
+  
+      }
+    }
+  });
+
+}
+
+// ******************************************************************** //
+// *************************** TASK SERVICE *************************** //
+// ******************************************************************** //
+
+
+// spawns a eternal task that manages every other task
 #[allow(unused)]
 pub struct TaskService {
   // for sending and recieving data from adam
   send_adam: Sender<ToAdam>,
   recieve_adam: Receiver<FromAdam>,
-}
-
-trait TaskLord {
-  fn spawn(self);
-}
-
-#[allow(unused)]
-struct Adam {
-  adam_reciever: Receiver<ToAdam>, 
-  adam_sender: Sender<FromAdam>,
-  self_sender: Sender<ToAdam>,
-  window: Arc<winit::window::Window>,
-  
-  tasks: Vec<TaskTracker>,
-}
-
-fn spawn_adam(
-    window: Arc<winit::window::Window>, 
-    adam_reciever: Receiver<ToAdam>, 
-    adam_sender: Sender<FromAdam>, 
-    send_adam: Sender<ToAdam>
-) {
-  thread::spawn(move || {
-      
-    let mut adam = Adam {
-      window, 
-      adam_reciever, 
-      adam_sender, 
-      self_sender: send_adam,
-      tasks: vec![],
-    };
-    while let Ok(recieved) = adam.adam_reciever.recv() {
-      match recieved {
-          
-        ToAdam::Exit => {
-          println!("from adam: adam is closing.");
-          return;
-        },
-        
-        ToAdam::AddTask(new_task) => {
-          let task_type = new_task.get_type();
-          let task = TaskTracker::new(new_task);
-          
-          match task_type {
-            _ => task.sender.send(ToTask::Schedule(Instant::now())).unwrap(),
-          }
-          adam.tasks.push(task);
-        }
-      }
-    }
-  });
 }
 
 impl TaskService {
@@ -178,7 +144,7 @@ impl TaskService {
     let (send_adam, adam_reciever) = sync::mpsc::channel::<ToAdam>();
     let (adam_sender, recieve_adam) = sync::mpsc::channel::<FromAdam>();
   
-    spawn_adam(window.clone(), adam_reciever, adam_sender, send_adam.clone());
+    spawn_task_master(window.clone(), adam_reciever, adam_sender, send_adam.clone());
   
     Self {
       send_adam, recieve_adam,
@@ -186,6 +152,58 @@ impl TaskService {
   }
 
 }
+
+// ******************************************************************** //
+// *************************** TASK MASTER **************************** //
+// ******************************************************************** //
+
+#[allow(unused)]
+struct TaskMaster {
+  task_reciever: Receiver<ToAdam>, 
+  task_sender: Sender<FromAdam>,
+  self_sender: Sender<ToAdam>,
+  window: Arc<winit::window::Window>,
+  
+  tasks: Vec<TaskTracker>,
+}
+
+fn spawn_task_master(
+  window: Arc<winit::window::Window>, 
+  task_reciever: Receiver<ToAdam>, 
+  task_sender: Sender<FromAdam>, 
+  self_sender: Sender<ToAdam>
+) {
+  thread::spawn(move || {
+      
+    let mut task_master = TaskMaster {
+      window, 
+      task_reciever, 
+      task_sender, 
+      self_sender,
+      tasks: vec![],
+    };
+    while let Ok(recieved) = task_master.task_reciever.recv() {
+      match recieved {
+          
+        ToAdam::Exit => {
+          return;
+        },
+        
+        ToAdam::AddTask(new_task) => {
+          let task_type = new_task.get_type();
+          let task = TaskTracker::new(new_task);
+          
+          match task_type {
+            _ => task.sender.send(ToTask::Schedule(Instant::now())).unwrap(),
+          }
+          task_master.tasks.push(task);
+        }
+      }
+    }
+  });
+}
+
+
 // ****************************************************************************** //
 // ********************************* TASK ENUMS ********************************* //
 // ****************************************************************************** //

@@ -39,95 +39,90 @@ struct App {
 }
 
 impl App {
-    fn new() -> Self {
-        Self {
-            engine: None,
-        }
+  fn new() -> Self {
+    Self {
+      engine: None,
     }
+  }
 }
 
 
 impl ApplicationHandler<engine::Engine> for App {
     
-    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        let window_attributes = Window::default_attributes();
-        let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
+  fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+    let window_attributes = Window::default_attributes();
+    let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
+    
+    self.engine = Some(pollster::block_on(engine::Engine::new(window)));
+  }
+
+  fn user_event(&mut self, _event_loop: &ActiveEventLoop, engine: engine::Engine) {
+    self.engine = Some(engine);
+  }
+
+  fn window_event(
+      &mut self,
+      event_loop: &ActiveEventLoop,
+      _window_id: winit::window::WindowId,
+      event: WindowEvent,
+  ) {
+    let engine = match &mut self.engine {
+        Some(canvas) => canvas,
+        None => return,
+    };
+    match event {
         
-        self.engine = Some(pollster::block_on(engine::Engine::new(window)));
+      WindowEvent::CloseRequested => {
+          event_loop.exit();
+      },
+      
+      WindowEvent::Resized(size) => engine.resize(size.width, size.height),
+      WindowEvent::RedrawRequested => on_redraw(engine),
+      #[allow(unused_variables)]
+      WindowEvent::CursorMoved { position, .. } => {
+      }
+      WindowEvent::KeyboardInput {
+        event:
+          KeyEvent {
+            physical_key: PhysicalKey::Code(_code),
+            state: _key_state,
+            ..
+          },
+        ..
+      } => engine.handle_key(&event),
+      _ => {}
     }
-
-    fn user_event(&mut self, _event_loop: &ActiveEventLoop, engine: engine::Engine) {
-        self.engine = Some(engine);
-    }
-
-    fn window_event(
-        &mut self,
-        event_loop: &ActiveEventLoop,
-        _window_id: winit::window::WindowId,
-        event: WindowEvent,
-    ) {
-        let engine = match &mut self.engine {
-            Some(canvas) => canvas,
-            None => return,
-        };
-
-        match event {
-            
-            WindowEvent::CloseRequested => {
-                event_loop.exit();
-            },
-            
-            WindowEvent::Resized(size) => engine.resize(size.width, size.height),
-
-            WindowEvent::RedrawRequested => on_redraw(engine),
-
-            #[allow(unused_variables)]
-            WindowEvent::CursorMoved { position, .. } => {
-            }
-
-
-            WindowEvent::KeyboardInput {
-                event:
-                    KeyEvent {
-                        physical_key: PhysicalKey::Code(_code),
-                        state: _key_state,
-                        ..
-                    },
-                ..
-            } => engine.handle_key(&event),
-            _ => {}
-        }
-    }
-    
-    fn new_events(&mut self, event_loop: &ActiveEventLoop, cause: StartCause) {
-        let _ = (event_loop, cause);
-    }
-    
-    fn device_event(
-        &mut self,
-        event_loop: &ActiveEventLoop,
-        device_id: DeviceId,
-        event: DeviceEvent,
-    ) {
-        let _ = (event_loop, device_id, event);
-    }
-    
-    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
-        let _ = event_loop;
-    }
-    
-    fn suspended(&mut self, event_loop: &ActiveEventLoop) {
-        let _ = event_loop;
-    }
-    
-    fn exiting(&mut self, event_loop: &ActiveEventLoop) {
-        let _ = event_loop;
-    }
-    
-    // at the time of writing this, this is only for mobile devices (ios, android)
-    fn memory_warning(&mut self, event_loop: &ActiveEventLoop) {
-        let _ = event_loop;
-    }
+  }
+  
+  fn new_events(&mut self, event_loop: &ActiveEventLoop, cause: StartCause) {
+    let _ = (event_loop, cause);
+  }
+  
+  fn device_event(
+    &mut self,
+    event_loop: &ActiveEventLoop,
+    device_id: DeviceId,
+    event: DeviceEvent,
+  ) {
+    let _ = (event_loop, device_id, event);
+  }
+  
+  fn exiting(&mut self, event_loop: &ActiveEventLoop) {
+    let _ = event_loop;
+  }
+  fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+    let _ = event_loop;
+  }
+  
+  // at the time of writing this, these are only for mobile devices (ios, android)
+  
+  fn suspended(&mut self, event_loop: &ActiveEventLoop) {
+    let _ = event_loop;
+  }
+  
+  fn memory_warning(&mut self, event_loop: &ActiveEventLoop) {
+    let _ = event_loop;
+  }
 
 }
 
