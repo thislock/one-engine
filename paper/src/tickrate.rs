@@ -9,24 +9,22 @@ pub struct Tickrate {
 }
 
 impl Tickrate {
-    pub fn new() -> Self {
-        Self {
-            last_tick: Instant::now(),
-            start_time: Instant::now(),
-            delta_time: 0.0,
-        }
+  pub fn new() -> Self {
+    Self {
+      last_tick: Instant::now(),
+      start_time: Instant::now(),
+      delta_time: 0.0,
     }
+  }
 
-    pub fn get_delta(&self) -> f32 {
-        self.delta_time as f32
-    }
+  pub fn get_delta(&self) -> f32 {
+    self.delta_time as f32
+  }
 
-    // will sleep inbetween frames
-    pub fn tick(&mut self) {
-        let render_time = Instant::now().duration_since(self.last_tick).as_secs_f64();
-        
-        self.delta_time = render_time;
-        
-        self.last_tick = Instant::now();
-    }
+  // will sleep inbetween frames
+  pub fn tick(&mut self) {
+    let render_time = Instant::now().duration_since(self.last_tick).as_secs_f64();  
+    self.delta_time = render_time;
+    self.last_tick = Instant::now();
+  }
 }
