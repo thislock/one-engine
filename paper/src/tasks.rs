@@ -256,7 +256,10 @@ fn spawn_task_master(
           
           match task_type {
             TaskType::Looping(loop_group) => {
-              loop_group.add_member(task.sender.clone());
+              let msg = loop_group.add_member(task.sender.clone());
+              if let Err(err) = msg {
+                paper_error::log_error("fucking fuck fuck", err);
+              }
             },
             // typically just called by other tasks
             TaskType::Rare => {},
