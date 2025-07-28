@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use winit::dpi::PhysicalSize;
 
-
 pub struct Drivers {
   pub surface: wgpu::Surface<'static>,
   pub device: wgpu::Device,
@@ -12,10 +11,16 @@ pub struct Drivers {
 }
 
 impl Drivers {
-
-  async fn init_window(window: Arc<winit::window::Window>) -> 
-    (wgpu::Surface<'static>, wgpu::Device, wgpu::Queue, PhysicalSize<u32>, wgpu::TextureFormat, wgpu::SurfaceCapabilities) 
-  {
+  async fn init_window(
+    window: Arc<winit::window::Window>,
+  ) -> (
+    wgpu::Surface<'static>,
+    wgpu::Device,
+    wgpu::Queue,
+    PhysicalSize<u32>,
+    wgpu::TextureFormat,
+    wgpu::SurfaceCapabilities,
+  ) {
     let size = window.inner_size();
     // The instance is a handle to our GPU
     // BackendBit::PRIMARY => Vulkan + Metal + DX12 + Browser WebGPU
@@ -24,22 +29,26 @@ impl Drivers {
       ..Default::default()
     });
     let surface = instance.create_surface(window.clone()).unwrap();
-    let adapter = instance.request_adapter(
-      &wgpu::RequestAdapterOptions {
+    let adapter = instance
+      .request_adapter(&wgpu::RequestAdapterOptions {
         power_preference: wgpu::PowerPreference::default(),
         compatible_surface: Some(&surface),
         force_fallback_adapter: false,
-      }
-    ).await.unwrap();
-    let (device, queue) = adapter.request_device(
-      &wgpu::DeviceDescriptor {
-        label: None,
-        required_features: wgpu::Features::empty(),
-        required_limits: wgpu::Limits::default(),
-        memory_hints: Default::default()
-      }, 
-      None
-    ).await.unwrap();
+      })
+      .await
+      .unwrap();
+    let (device, queue) = adapter
+      .request_device(
+        &wgpu::DeviceDescriptor {
+          label: None,
+          required_features: wgpu::Features::empty(),
+          required_limits: wgpu::Limits::default(),
+          memory_hints: Default::default(),
+        },
+        None,
+      )
+      .await
+      .unwrap();
     let surface_caps = surface.get_capabilities(&adapter);
     // formatted to srgb, check docs to change (please don't)
     let surface_format = surface_caps
@@ -52,10 +61,9 @@ impl Drivers {
   }
 
   pub async fn new(window: Arc<winit::window::Window>) -> Self {
-
-    let (surface, device, queue, size, surface_format, surface_caps) = Self::init_window(window.clone()).await;
+    let (surface, device, queue, size, surface_format, surface_caps) =
+      Self::init_window(window.clone()).await;
     let surface_config = wgpu::SurfaceConfiguration {
-
       usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
       format: surface_format,
       width: size.width,

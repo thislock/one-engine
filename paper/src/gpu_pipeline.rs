@@ -1,42 +1,39 @@
-use crate::{gpu_bindgroups, device_drivers, gpu_geometry};
+use crate::{device_drivers, gpu_bindgroups, gpu_geometry};
 
 pub struct PipelineData {
   pub render_pipeline: wgpu::RenderPipeline,
 }
 
 impl PipelineData {
-
   fn init_render_pipeline(
-    device: &wgpu::Device, 
-    shader_module: wgpu::ShaderModule, 
-    surface_config: &wgpu::SurfaceConfiguration, 
+    device: &wgpu::Device,
+    shader_module: wgpu::ShaderModule,
+    surface_config: &wgpu::SurfaceConfiguration,
     bindgroup_data: &gpu_bindgroups::BindGroups,
   ) -> wgpu::RenderPipeline {
-      
     let slice = &bindgroup_data.collect_slice();
-    let render_pipeline_layout = device.create_pipeline_layout(
-      &wgpu::PipelineLayoutDescriptor {
-        label: Some("Render Pipeline Layout"),
-        bind_group_layouts: slice,
-        push_constant_ranges: &[],
-      }
-    );
+    let render_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+      label: Some("Render Pipeline Layout"),
+      bind_group_layouts: slice,
+      push_constant_ranges: &[],
+    });
     let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        
       label: Some("Render Pipeline"),
       layout: Some(&render_pipeline_layout),
-      
+
       vertex: wgpu::VertexState {
         module: &shader_module,
-        entry_point: Some("vs_main"), // 1.
+        entry_point: Some("vs_main"),             // 1.
         buffers: &[gpu_geometry::Vertex::desc()], // 2.
         compilation_options: wgpu::PipelineCompilationOptions::default(),
       },
-      
-      fragment: Some(wgpu::FragmentState { // 3.
+
+      fragment: Some(wgpu::FragmentState {
+        // 3.
         module: &shader_module,
         entry_point: Some("fs_main"),
-        targets: &[Some(wgpu::ColorTargetState { // 4.
+        targets: &[Some(wgpu::ColorTargetState {
+          // 4.
           format: surface_config.format,
           blend: Some(wgpu::BlendState::REPLACE),
           write_mask: wgpu::ColorWrites::ALL,
@@ -57,33 +54,30 @@ impl PipelineData {
       },
       depth_stencil: None, // 1.
       multisample: wgpu::MultisampleState {
-        count: 1, // 2.
-        mask: !0, // 3.
+        count: 1,                         // 2.
+        mask: !0,                         // 3.
         alpha_to_coverage_enabled: false, // 4.
       },
-      
+
       multiview: None, // 5.
-      cache: None, // 6.
+      cache: None,     // 6.
     });
     return render_pipeline;
   }
   // TODO: learn how to refresh the render pipeline while the program is running.
-  pub async fn new(bindgroups: &gpu_bindgroups::BindGroups, drivers: &device_drivers::Drivers) -> anyhow::Result<Self> {
-    let shader = drivers.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-      label: Some("Shader"),
-      source: wgpu::ShaderSource::Wgsl(include_str!("shader_code/sample.wgsl").into()),
-    });
-      let render_pipeline = Self::init_render_pipeline(
-        &drivers.device, 
-        shader, 
-        &drivers.surface_config, 
-        bindgroups
-      );
-  
-      Ok(Self {
-        render_pipeline,
-      })
-  }
-    
+  pub async fn new(
+    bindgroups: &gpu_bindgroups::BindGroups,
+    drivers: &device_drivers::Drivers,
+  ) -> anyhow::Result<Self> {
+    let shader = drivers
+      .device
+      .create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some("Shader"),
+        source: wgpu::ShaderSource::Wgsl(include_str!("shader_code/sample.wgsl").into()),
+      });
+    let render_pipeline =
+      Self::init_render_pipeline(&drivers.device, shader, &drivers.surface_config, bindgroups);
 
+    Ok(Self { render_pipeline })
+  }
 }

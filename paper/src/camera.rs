@@ -1,11 +1,18 @@
 use cgmath::{EuclideanSpace, Vector3};
 use wgpu::util::DeviceExt;
-use winit::{dpi::PhysicalSize, event::{ElementState, KeyEvent, WindowEvent}, keyboard::{KeyCode, PhysicalKey}};
+use winit::{
+  dpi::PhysicalSize,
+  event::{ElementState, KeyEvent, WindowEvent},
+  keyboard::{KeyCode, PhysicalKey},
+};
 
 use crate::tasks::LoopGroup;
 #[allow(unused)]
-use crate::{camera, camera_uniform_buffer, tasks::{Task, TaskMessenger}, tickrate};
-
+use crate::{
+  camera, camera_uniform_buffer,
+  tasks::{Task, TaskMessenger},
+  tickrate,
+};
 
 #[allow(unused)]
 #[rustfmt::skip]
@@ -61,7 +68,7 @@ impl CameraController {
       is_up_pressed: false,
       is_left_pressed: false,
       is_right_pressed: false,
-      
+
       is_forward_pressed: false,
       is_backward_pressed: false,
       is_moving_right: false,
@@ -81,7 +88,8 @@ impl CameraController {
         ..
       } => {
         let is_pressed = *state == ElementState::Pressed;
-        match keycode {KeyCode::ArrowUp => {
+        match keycode {
+          KeyCode::ArrowUp => {
             self.is_up_pressed = is_pressed;
             true
           }
@@ -108,11 +116,11 @@ impl CameraController {
           KeyCode::KeyW => {
             self.is_forward_pressed = is_pressed;
             true
-          },
+          }
           KeyCode::KeyS => {
             self.is_backward_pressed = is_pressed;
             true
-          },
+          }
           _ => false,
         }
       }
@@ -126,7 +134,8 @@ impl CameraController {
 
   #[allow(unused)]
   pub fn print_vec_degrees(rot: &Vector3<f32>) {
-    println!("x: {} y: {} z: {}", 
+    println!(
+      "x: {} y: {} z: {}",
       Self::get_degrees(rot.x),
       Self::get_degrees(rot.y),
       Self::get_degrees(rot.z),
@@ -146,7 +155,11 @@ impl CameraController {
     if self.is_backward_pressed {
       camera.eye += forward_norm * self.speed;
     }
-    let vertical_lock = Vector3 { x: 1.0, y: 0.0, z: 0.0 };
+    let vertical_lock = Vector3 {
+      x: 1.0,
+      y: 0.0,
+      z: 0.0,
+    };
     let right = forward_norm.cross(camera.up);
     let up = forward_norm.cross(vertical_lock);
     // Redo radius calc in case the forward/backward is pressed.
@@ -159,8 +172,8 @@ impl CameraController {
       camera.eye = camera.target - (forward - up * self.speed).normalize() * forward_mag;
     }
     if self.is_right_pressed {
-      // Rescale the distance between the target and the eye so 
-      // that it doesn't change. The eye, therefore, still 
+      // Rescale the distance between the target and the eye so
+      // that it doesn't change. The eye, therefore, still
       // lies on the circle made by the target and eye.
       camera.eye = camera.target - (forward + right * self.speed).normalize() * forward_mag;
     }
@@ -186,19 +199,17 @@ impl Task for GpuCamera {
     crate::tasks::TaskType::Looping(self.loop_group.clone())
   }
   fn run_task(
-      &mut self,
-      _messages: &mut TaskMessenger,
-      // the time since the function was ran last
-      delta_time: f32,
-    ) -> anyhow::Result<()> 
-  {
+    &mut self,
+    _messages: &mut TaskMessenger,
+    // the time since the function was ran last
+    delta_time: f32,
+  ) -> anyhow::Result<()> {
     self.update_camera(delta_time);
     Ok(())
   }
 }
 
 impl GpuCamera {
-
   pub fn new(device: &wgpu::Device, size: PhysicalSize<u32>, loop_group: LoopGroup) -> Self {
     let camera = camera::Camera {
       // position the camera 1 unit up and 2 units back
@@ -217,17 +228,15 @@ impl GpuCamera {
     let mut camera_uniform = camera_uniform_buffer::CameraUniform::new();
     camera_uniform.update_view_proj(&camera);
 
-    let camera_buffer = device.create_buffer_init(
-      &wgpu::util::BufferInitDescriptor {
-        label: Some("Camera Buffer"),
-        contents: bytemuck::cast_slice(&[camera_uniform]),
-        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-      }
-    );
+    let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+      label: Some("Camera Buffer"),
+      contents: bytemuck::cast_slice(&[camera_uniform]),
+      usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+    });
 
-    let camera_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-      entries: &[
-        wgpu::BindGroupLayoutEntry {
+    let camera_bind_group_layout =
+      device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        entries: &[wgpu::BindGroupLayoutEntry {
           binding: 0,
           visibility: wgpu::ShaderStages::VERTEX,
           ty: wgpu::BindingType::Buffer {
@@ -236,23 +245,18 @@ impl GpuCamera {
             min_binding_size: None,
           },
           count: None,
-        }
-      ],
-      label: Some("camera_bind_group_layout"),
+        }],
+        label: Some("camera_bind_group_layout"),
+      });
+
+    let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+      layout: &camera_bind_group_layout,
+      entries: &[wgpu::BindGroupEntry {
+        binding: 0,
+        resource: camera_buffer.as_entire_binding(),
+      }],
+      label: Some("camera_bind_group"),
     });
-    
-    let camera_bind_group = device.create_bind_group(
-      &wgpu::BindGroupDescriptor {
-        layout: &camera_bind_group_layout,
-        entries: &[
-          wgpu::BindGroupEntry {
-            binding: 0,
-            resource: camera_buffer.as_entire_binding(),
-          }
-        ],
-        label: Some("camera_bind_group"),
-      }
-    );
     Self {
       camera,
       camera_uniform,
@@ -263,12 +267,10 @@ impl GpuCamera {
 
       loop_group,
     }
-
   }
-  
+
   pub fn update_camera(&mut self, delta: f32) {
     self.camera_controller.speed = self.camera_controller.base_speed * delta;
     self.camera_controller.update_camera(&mut self.camera);
   }
-
 }

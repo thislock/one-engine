@@ -3,59 +3,54 @@ use winit::event_loop::EventLoop;
 use std::sync::Arc;
 
 use winit::{
-    application::ApplicationHandler,
-    event::*,
-    event_loop::ActiveEventLoop,
-    keyboard::PhysicalKey,
-    window::Window,
+  application::ApplicationHandler, event::*, event_loop::ActiveEventLoop, keyboard::PhysicalKey,
+  window::Window,
 };
-
 
 // binds everything together
 #[path = "1engine.rs"]
 mod engine;
 
-#[path="tasks/lib.rs"]
+#[path = "tasks/lib.rs"]
 mod task_lib;
 
-#[path ="error.rs"]
+#[path = "error.rs"]
 mod paper_error;
 
 mod device_drivers;
 
-mod gpu_texture;
-mod gpu_geometry;
 mod camera;
 mod camera_uniform_buffer;
+mod gpu_geometry;
+mod gpu_texture;
+mod instances;
 
-mod tasks;
 mod render;
+mod tasks;
 
 mod gpu_bindgroups;
 mod gpu_pipeline;
 
 mod tickrate;
-mod z_missing_texture;
+
+#[path = "hardcoded_values/missing_texture.rs"]
+mod missing_texture;
 
 struct App {
-    engine: Option<engine::Engine>,
+  engine: Option<engine::Engine>,
 }
 
 impl App {
   fn new() -> Self {
-    Self {
-      engine: None,
-    }
+    Self { engine: None }
   }
 }
 
-
 impl ApplicationHandler<engine::Engine> for App {
-    
   fn resumed(&mut self, event_loop: &ActiveEventLoop) {
     let window_attributes = Window::default_attributes();
     let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
-    
+
     self.engine = Some(pollster::block_on(engine::Engine::new(window)));
   }
 
@@ -64,26 +59,25 @@ impl ApplicationHandler<engine::Engine> for App {
   }
 
   fn window_event(
-      &mut self,
-      event_loop: &ActiveEventLoop,
-      _window_id: winit::window::WindowId,
-      event: WindowEvent,
+    &mut self,
+    event_loop: &ActiveEventLoop,
+    _window_id: winit::window::WindowId,
+    event: WindowEvent,
   ) {
     let engine = match &mut self.engine {
-        Some(canvas) => canvas,
-        None => return,
+      Some(canvas) => canvas,
+      None => return,
     };
     match event {
-        
       WindowEvent::CloseRequested => {
-          event_loop.exit();
-      },
-      
+        event_loop.exit();
+      }
+
       WindowEvent::Resized(size) => engine.resize(size.width, size.height),
       WindowEvent::RedrawRequested => on_redraw(engine),
       #[allow(unused_variables)]
-      WindowEvent::CursorMoved { position, .. } => {
-      }
+      WindowEvent::CursorMoved { position, .. } => {}
+
       WindowEvent::KeyboardInput {
         event:
           KeyEvent {
@@ -96,11 +90,11 @@ impl ApplicationHandler<engine::Engine> for App {
       _ => {}
     }
   }
-  
+
   fn new_events(&mut self, event_loop: &ActiveEventLoop, cause: StartCause) {
     let _ = (event_loop, cause);
   }
-  
+
   fn device_event(
     &mut self,
     event_loop: &ActiveEventLoop,
@@ -109,58 +103,55 @@ impl ApplicationHandler<engine::Engine> for App {
   ) {
     let _ = (event_loop, device_id, event);
   }
-  
+
   fn exiting(&mut self, event_loop: &ActiveEventLoop) {
     let _ = event_loop;
   }
   fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
     let _ = event_loop;
   }
-  
+
   // at the time of writing this, these are only for mobile devices (ios, android)
-  
+
   fn suspended(&mut self, event_loop: &ActiveEventLoop) {
     let _ = event_loop;
   }
-  
+
   fn memory_warning(&mut self, event_loop: &ActiveEventLoop) {
     let _ = event_loop;
   }
-
 }
 
 fn on_redraw(engine: &mut engine::Engine) {
-    engine.update();
+  engine.update();
 
-    match engine.render_task.render(&engine) {
+  // try and render crap
+  match engine.render_task.render(&engine) {
+    Ok(_) => {}
 
-        Ok(_) => {}
-        // Reconfigure the surface if it's lost or outdated
-        
-        Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
-            let size = engine.get_window().inner_size();
-            engine.resize(size.width, size.height);
-        }
-        
-        Err(e) => {
-            log::error!("Unable to render {}", e);
-        }
-    
+    // reconfigure the surface if it's bad
+    Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
+      let size = engine.get_window().inner_size();
+      engine.resize(size.width, size.height);
     }
 
-    engine.tickrate.tick();
+    Err(e) => {
+      paper_error::log_error("Unable to render", e.into());
+    }
+  }
+
+  engine.tickrate.tick();
 }
 
 pub fn run() -> anyhow::Result<()> {
-    
-    env_logger::init();
+  env_logger::init();
 
-    let event_loop = EventLoop::with_user_event().build()?;
-    // tells the event loop to run in the background
-    event_loop.set_control_flow(winit::event_loop::ControlFlow::Wait);
+  let event_loop = EventLoop::with_user_event().build()?;
+  // tells the event loop to run in the background
+  event_loop.set_control_flow(winit::event_loop::ControlFlow::Wait);
 
-    let mut app = App::new();
-    event_loop.run_app(&mut app)?;
+  let mut app = App::new();
+  event_loop.run_app(&mut app)?;
 
-    Ok(())
+  Ok(())
 }

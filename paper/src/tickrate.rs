@@ -1,11 +1,11 @@
 use std::time::Instant;
 
 pub struct Tickrate {
-    last_tick: Instant,
-    delta_time: f64,
+  last_tick: Instant,
+  delta_time: f64,
 
-    #[allow(unused)]
-    start_time: Instant,
+  #[allow(unused)]
+  start_time: Instant,
 }
 
 impl Tickrate {
@@ -23,7 +23,7 @@ impl Tickrate {
 
   // will sleep inbetween frames
   pub fn tick(&mut self) {
-    let render_time = Instant::now().duration_since(self.last_tick).as_secs_f64();  
+    let render_time = Instant::now().duration_since(self.last_tick).as_secs_f64();
     self.delta_time = render_time;
     self.last_tick = Instant::now();
   }

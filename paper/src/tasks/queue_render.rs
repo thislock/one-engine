@@ -1,5 +1,5 @@
-use std::sync::Arc;
 use crate::tasks::{LoopGroup, Task, TaskMessenger, TaskType};
+use std::sync::Arc;
 
 pub struct QueueRender {
   pub window: Arc<winit::window::Window>,
@@ -11,12 +11,11 @@ impl Task for QueueRender {
     TaskType::Looping(self.loop_group.clone())
   }
   fn run_task(
-      &mut self,
-      _messages: &mut TaskMessenger,
-      // the time since the function was ran last
-      _delta_time: f32,
-    ) -> anyhow::Result<()> 
-  {        
+    &mut self,
+    _messages: &mut TaskMessenger,
+    // the time since the function was ran last
+    _delta_time: f32,
+  ) -> anyhow::Result<()> {
     self.window.request_redraw();
     Ok(())
   }

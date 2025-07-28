@@ -1,11 +1,19 @@
 // a system for scheduling tasks of varying importance,
 // with a delta so less important tasks can be ignored to avoid lag spikes
 
-use std::{sync::{self, mpsc::{Receiver, Sender}, Arc}, thread, time::{Duration, Instant}};
+use std::{
+  sync::{
+    self,
+    mpsc::{Receiver, Sender},
+    Arc,
+  },
+  thread,
+  time::{Duration, Instant},
+};
 
 #[allow(unused)]
 pub struct TaskMessenger {
-  pub sender: Sender<FromTask>, 
+  pub sender: Sender<FromTask>,
   pub reciever: Receiver<ToTask>,
   pub self_sender: Sender<ToTask>,
 }
@@ -26,7 +34,6 @@ pub struct LoopGroup {
 }
 
 fn spawn_loop_group(loop_epoch: Duration, rx: Receiver<Sender<ToTask>>) {
-
   thread::spawn(move || {
     const FUCK: &str = "failed to send message in loop group main loop";
 
@@ -39,7 +46,10 @@ fn spawn_loop_group(loop_epoch: Duration, rx: Receiver<Sender<ToTask>>) {
 
     while alive {
       // check if there are any new victims
-      match channel.try_recv() {Ok(new_victim) => loop_channels.push(new_victim), _=>{}}
+      match channel.try_recv() {
+        Ok(new_victim) => loop_channels.push(new_victim),
+        _ => {}
+      }
       // go through every victim and run them
       let now = Instant::now();
       let mut errors = vec![];
@@ -63,19 +73,15 @@ fn spawn_loop_group(loop_epoch: Duration, rx: Receiver<Sender<ToTask>>) {
       thread::sleep(loop_epoch);
     }
   });
-
 }
 
 impl LoopGroup {
   pub fn new(loop_epoch: Duration) -> Self {
-
     let (tx, rx) = sync::mpsc::channel::<Sender<ToTask>>();
-    
+
     spawn_loop_group(loop_epoch, rx);
-    
-    Self {
-      send: tx,
-    }
+
+    Self { send: tx }
   }
 
   pub fn add_member(&self, sent: Sender<ToTask>) -> anyhow::Result<()> {
@@ -84,12 +90,13 @@ impl LoopGroup {
   }
 }
 
-use crate::paper_error; 
+use crate::paper_error;
 
 #[derive(Debug)]
 #[allow(unused)]
 pub enum TaskType {
-  Rare, Looping(LoopGroup),
+  Rare,
+  Looping(LoopGroup),
 }
 
 #[allow(unused)]
@@ -104,7 +111,7 @@ struct TimeInfo {
 impl Default for TimeInfo {
   fn default() -> Self {
     Self {
-      running_time_history: [None;128],
+      running_time_history: [None; 128],
       history_tracker: 0,
       avr_time_ran: Duration::from_secs_f32(0.0),
       last_time_ran: std::time::Instant::now(),
@@ -132,13 +139,11 @@ struct TaskTracker {
 }
 
 impl TaskTracker {
-
   fn new(task: Box<dyn Task + Send>) -> Self {
-      
     // create channels so both the task, and adam can communicate
     let (tx1, rx1) = sync::mpsc::channel::<ToTask>();
     let (tx2, rx2) = sync::mpsc::channel::<FromTask>();
-    
+
     spawn_task(task, tx1.clone(), tx2, rx1);
     Self {
       time_info: TimeInfo::default(),
@@ -146,19 +151,24 @@ impl TaskTracker {
       reciever: rx2,
     }
   }
-
 }
 
-fn spawn_task(mut task: Box<dyn Task + Send>, self_sender: Sender<ToTask>, sender: Sender<FromTask>, reciever: Receiver<ToTask>) {
-  
+fn spawn_task(
+  mut task: Box<dyn Task + Send>,
+  self_sender: Sender<ToTask>,
+  sender: Sender<FromTask>,
+  reciever: Receiver<ToTask>,
+) {
   thread::spawn(move || {
-  
-    let mut messages = TaskMessenger {sender, reciever, self_sender};
+    let mut messages = TaskMessenger {
+      sender,
+      reciever,
+      self_sender,
+    };
     let mut last_time_ran = Instant::now();
-  
+
     while let Ok(message) = messages.reciever.recv() {
       match message {
-  
         ToTask::Exit => return,
         ToTask::Schedule(at_time) => {
           // sleep until it's the scheduled time.
@@ -168,21 +178,20 @@ fn spawn_task(mut task: Box<dyn Task + Send>, self_sender: Sender<ToTask>, sende
             &mut messages,
             // way to much code, i know. i just don't care.
             Instant::now()
-              .checked_duration_since(last_time_ran).unwrap().as_secs_f32(),
+              .checked_duration_since(last_time_ran)
+              .unwrap()
+              .as_secs_f32(),
           );
           last_time_ran = Instant::now();
         }
-  
       }
     }
   });
-
 }
 
 // ******************************************************************** //
 // *************************** TASK SERVICE *************************** //
 // ******************************************************************** //
-
 
 // spawns a eternal task that manages every other task
 #[allow(unused)]
@@ -193,7 +202,6 @@ pub struct TaskService {
 }
 
 impl TaskService {
-
   pub fn add_tasks(&mut self, tasks: Vec<Box<dyn Task + Send>>) {
     for task in tasks {
       let _ = self.send_adam.send(ToAdam::AddTask(task));
@@ -201,17 +209,21 @@ impl TaskService {
   }
 
   pub fn new(window: Arc<winit::window::Window>) -> Self {
-  
     let (send_adam, adam_reciever) = sync::mpsc::channel::<ToAdam>();
     let (adam_sender, recieve_adam) = sync::mpsc::channel::<FromAdam>();
-  
-    spawn_task_master(window.clone(), adam_reciever, adam_sender, send_adam.clone());
-  
+
+    spawn_task_master(
+      window.clone(),
+      adam_reciever,
+      adam_sender,
+      send_adam.clone(),
+    );
+
     Self {
-      send_adam, recieve_adam,
+      send_adam,
+      recieve_adam,
     }
   }
-
 }
 
 // ******************************************************************** //
@@ -220,49 +232,47 @@ impl TaskService {
 
 #[allow(unused)]
 struct TaskMaster {
-  task_reciever: Receiver<ToAdam>, 
+  task_reciever: Receiver<ToAdam>,
   task_sender: Sender<FromAdam>,
   self_sender: Sender<ToAdam>,
   window: Arc<winit::window::Window>,
-  
+
   tasks: Vec<TaskTracker>,
 }
 
 fn spawn_task_master(
-  window: Arc<winit::window::Window>, 
-  task_reciever: Receiver<ToAdam>, 
-  task_sender: Sender<FromAdam>, 
-  self_sender: Sender<ToAdam>
+  window: Arc<winit::window::Window>,
+  task_reciever: Receiver<ToAdam>,
+  task_sender: Sender<FromAdam>,
+  self_sender: Sender<ToAdam>,
 ) {
   thread::spawn(move || {
-      
     let mut task_master = TaskMaster {
-      window, 
-      task_reciever, 
-      task_sender, 
+      window,
+      task_reciever,
+      task_sender,
       self_sender,
       tasks: vec![],
     };
     while let Ok(recieved) = task_master.task_reciever.recv() {
       match recieved {
-          
         ToAdam::Exit => {
           return;
-        },
-        
+        }
+
         ToAdam::AddTask(new_task) => {
           let task_type = new_task.get_type();
           let task = TaskTracker::new(new_task);
-          
+
           match task_type {
             TaskType::Looping(loop_group) => {
               let msg = loop_group.add_member(task.sender.clone());
               if let Err(err) = msg {
                 paper_error::log_error("fucking fuck fuck", err);
               }
-            },
+            }
             // typically just called by other tasks
-            TaskType::Rare => {},
+            TaskType::Rare => {}
           }
           task_master.tasks.push(task);
         }
@@ -271,13 +281,10 @@ fn spawn_task_master(
   });
 }
 
-
 // ****************************************************************************** //
 // ********************************* TASK ENUMS ********************************* //
 // ****************************************************************************** //
-pub enum FromTask {
-    
-}
+pub enum FromTask {}
 
 #[allow(unused)]
 pub enum ToTask {
@@ -289,9 +296,7 @@ pub enum ToTask {
 pub enum ToAdam {
   // stop adam
   Exit,
-    
+
   AddTask(Box<dyn Task + Send>),
 }
-pub enum FromAdam {
-
-}
+pub enum FromAdam {}
