@@ -1,4 +1,6 @@
-use wgpu::{util::DeviceExt, VertexBufferLayout};
+use wgpu::{util::DeviceExt, RenderPass, VertexBufferLayout};
+
+use crate::engine;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -21,6 +23,32 @@ impl Vertex {
   }
 }
 
+pub struct MeshBuilder {
+  vertex_buffer: Option<wgpu::Buffer>,
+  index_buffer: Option<wgpu::Buffer>,
+  texture_id: Option<String>,
+}
+
+impl MeshBuilder {
+  pub fn new() -> Self {
+    Self {
+      vertex_buffer: None,
+      index_buffer: None,
+      texture_id: None,
+    }
+  }
+
+  pub fn build(&self, device: wgpu::Device) -> Mesh {
+
+    if let Some(vert_buffer) = self.vertex_buffer {
+
+    }
+
+    todo!()
+
+  }
+}
+
 pub struct Mesh {
   pub vertex_buffer: wgpu::Buffer,
   pub index_buffer: wgpu::Buffer,
@@ -40,6 +68,7 @@ impl Mesh {
       contents: Self::format_indicies(&indicies),
       usage: wgpu::BufferUsages::INDEX,
     });
+    
     Self {
       vertex_buffer,
       index_buffer,
@@ -53,5 +82,18 @@ impl Mesh {
 
   pub fn format_indicies(indicies: &Vec<u32>) -> &[u8] {
     bytemuck::cast_slice(indicies)
+  }
+
+  const TEXTURE_BINDGROUP: u32 = 0;
+  const CAMERA_TRANSFORM_BINDGROUP: u32 = 1;
+
+  pub fn render_mesh(&self, render_pass: &mut RenderPass<'_>, engine: &engine::Engine) {
+    render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+    render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+
+    render_pass.set_bind_group(Self::TEXTURE_BINDGROUP, engine.texture_bundle.get_diffuse_bind_group("yees"), &[]);
+    render_pass.set_bind_group(Self::CAMERA_TRANSFORM_BINDGROUP, &engine.camera.camera_bind_group, &[]);
+
+    render_pass.draw_indexed(0..self.num_indicies, 0, 0..1);
   }
 }

@@ -75,16 +75,6 @@ impl RenderTask {
     self.render_mesh(render_pass, engine);
   }
 
-  fn render_mesh(&self, render_pass: &mut RenderPass<'_>, engine: &engine::Engine) {
-    render_pass.set_vertex_buffer(0, self.mesh.vertex_buffer.slice(..));
-    render_pass.set_index_buffer(self.mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-
-    render_pass.set_bind_group(0, engine.texture_bundle.get_diffuse_bind_group("yees"), &[]);
-    render_pass.set_bind_group(1, &engine.camera.camera_bind_group, &[]);
-
-    render_pass.draw_indexed(0..self.mesh.num_indicies, 0, 0..1);
-  }
-
   fn finish_rendering(
     &self,
     output: wgpu::SurfaceTexture,
