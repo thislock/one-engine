@@ -11,7 +11,7 @@ pub struct TaskMessenger {
 }
 
 pub trait Task {
-  fn get_type(&self) -> TaskType;    
+  fn get_type(&self) -> TaskType;
   fn run_task(
     &mut self,
     message: &mut TaskMessenger,
@@ -20,15 +20,76 @@ pub trait Task {
   ) -> anyhow::Result<()>;
 }
 
-use strum_macros::EnumIter; 
+#[derive(Debug, Clone)]
+pub struct LoopGroup {
+  send: Sender<Sender<ToTask>>,
+}
 
-#[derive(Debug, EnumIter)]
+fn spawn_loop_group(loop_epoch: Duration, rx: Receiver<Sender<ToTask>>) {
+
+  thread::spawn(move || {
+    const FUCK: &str = "failed to send message in loop group main loop";
+
+    let channel = rx;
+    let mut loop_channels = vec![];
+
+    let mut alive = true;
+
+    let loop_epoch = loop_epoch;
+
+    while alive {
+      // check if there are any new victims
+      match channel.try_recv() {Ok(new_victim) => loop_channels.push(new_victim), _=>{}}
+      // go through every victim and run them
+      let now = Instant::now();
+      let mut errors = vec![];
+      for victim in &loop_channels {
+        let result = victim.send(ToTask::Schedule(now));
+        if let Err(err) = result {
+          errors.push(err);
+        }
+      }
+
+      // check for erros
+      if errors.len() != 0 {
+        for error in errors {
+          paper_error::log_error(FUCK, error.into());
+        }
+        alive = false;
+        paper_error::log("loop group closed after previous errors");
+      }
+
+      // wait until the next frame
+      thread::sleep(loop_epoch);
+    }
+  });
+
+}
+
+impl LoopGroup {
+  pub fn new(loop_epoch: Duration) -> Self {
+
+    let (tx, rx) = sync::mpsc::channel::<Sender<ToTask>>();
+    
+    spawn_loop_group(loop_epoch, rx);
+    
+    Self {
+      send: tx,
+    }
+  }
+
+  pub fn add_member(&self, sent: Sender<ToTask>) -> anyhow::Result<()> {
+    self.send.send(sent)?;
+    Ok(())
+  }
+}
+
+use crate::paper_error; 
+
+#[derive(Debug)]
 #[allow(unused)]
 pub enum TaskType {
-  // loops every frame
-  Looping,
-  // loops at it's own rate.
-  SelfLooping(Duration),
+  Rare, Looping(LoopGroup),
 }
 
 #[allow(unused)]
@@ -194,7 +255,11 @@ fn spawn_task_master(
           let task = TaskTracker::new(new_task);
           
           match task_type {
-            _ => task.sender.send(ToTask::Schedule(Instant::now())).unwrap(),
+            TaskType::Looping(loop_group) => {
+              loop_group.add_member(task.sender.clone());
+            },
+            // typically just called by other tasks
+            TaskType::Rare => {},
           }
           task_master.tasks.push(task);
         }

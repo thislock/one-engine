@@ -1,12 +1,13 @@
 
-use crate::{engine::Engine, tasks::Task};
+use crate::{engine::Engine, tasks::{LoopGroup, Task}};
 
 
 mod queue_render;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[allow(unused)]
 struct BurnerTask {
+  loop_group: LoopGroup,
 }
 
 #[allow(unused)]
@@ -23,7 +24,7 @@ fn pointlessly_complex_task(x: i32) -> i32 {
 
 impl Task for BurnerTask {
   fn get_type(&self) -> crate::tasks::TaskType {
-    crate::tasks::TaskType::Looping
+    crate::tasks::TaskType::Looping(self.loop_group.clone())
   }
   fn run_task(
       &mut self,
@@ -43,13 +44,13 @@ impl Task for BurnerTask {
 pub fn init_tasks(engine: &mut Engine) {
   engine.task_service.add_tasks(
     vec![
-      Box::new(queue_render::QueueRender {window: engine.get_window()}),
+      Box::new(queue_render::QueueRender {window: engine.get_window(), loop_group: engine.loop_group.clone()}),
     ]
   );
 
-    // stress test
+  // stress test
 
-    //let mut stress: Vec<Box<(dyn Task + Send + 'static)>> = vec![];
-    //for _ in 0..300 {stress.push(Box::new(BurnerTask {}));}
-    //engine.task_service.add_tasks(stress);
+  //let mut stress: Vec<Box<(dyn Task + Send + 'static)>> = vec![];
+  //for _ in 0..300 {stress.push(Box::new(BurnerTask {}));}
+  //engine.task_service.add_tasks(stress);
 }

@@ -1,9 +1,8 @@
 // gets every process and organises it's types to be ran
 
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
-
-use crate::{camera, device_drivers, gpu_bindgroups, gpu_pipeline, gpu_texture, render, task_lib, tasks, tickrate};
+use crate::{camera, device_drivers, gpu_bindgroups, gpu_pipeline, gpu_texture, render, task_lib, tasks::{self, LoopGroup}, tickrate};
 
 pub struct Engine {
   pub data_pipeline: gpu_pipeline::PipelineData,
@@ -19,9 +18,9 @@ pub struct Engine {
   pub render_task: render::RenderTask,
   
   pub task_service: tasks::TaskService,
+
+  pub loop_group: LoopGroup,
 }
-
-
 
 impl Engine {
   async fn new_closed(window: Arc<winit::window::Window>) -> Self {
@@ -29,8 +28,10 @@ impl Engine {
     let mut data_bindgroups = gpu_bindgroups::BindGroups::new();
     let drivers = device_drivers::Drivers::new(window.clone()).await;
     let render_task = render::RenderTask::new(&drivers).expect("failed to load rendertask");
+
+    let loop_group = LoopGroup::new(Duration::from_secs_f64(1.0/60.0));
     
-    let cam = camera::GpuCamera::new(&drivers.device, window.inner_size());
+    let cam = camera::GpuCamera::new(&drivers.device, window.inner_size(), loop_group.clone());
     let texture_bundle = gpu_texture::TextureBundle::new(&drivers.device, &drivers.queue).expect("failed to load texture buffer");
     
     data_bindgroups.add_bind(texture_bundle.get_texture_bind_group().clone());
@@ -49,6 +50,8 @@ impl Engine {
       task_service,
       tickrate,
       drivers,
+
+      loop_group,
     }
   }
 
@@ -56,6 +59,7 @@ impl Engine {
     let mut engine = Self::new_closed(window).await;
     
     task_lib::init_tasks(&mut engine);
+
     return engine;
   }
 

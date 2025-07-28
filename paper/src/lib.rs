@@ -18,6 +18,9 @@ mod engine;
 #[path="tasks/lib.rs"]
 mod task_lib;
 
+#[path ="error.rs"]
+mod paper_error;
+
 mod device_drivers;
 
 mod gpu_texture;

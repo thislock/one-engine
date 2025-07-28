@@ -2,6 +2,7 @@ use cgmath::{EuclideanSpace, Vector3};
 use wgpu::util::DeviceExt;
 use winit::{dpi::PhysicalSize, event::{ElementState, KeyEvent, WindowEvent}, keyboard::{KeyCode, PhysicalKey}};
 
+use crate::tasks::LoopGroup;
 #[allow(unused)]
 use crate::{camera, camera_uniform_buffer, tasks::{Task, TaskMessenger}, tickrate};
 
@@ -176,15 +177,17 @@ pub struct GpuCamera {
   pub camera_bind_group: wgpu::BindGroup,
   pub camera_bind_group_layout: wgpu::BindGroupLayout,
   pub camera_controller: CameraController,
+
+  loop_group: LoopGroup,
 }
 
 impl Task for GpuCamera {
   fn get_type(&self) -> crate::tasks::TaskType {
-    crate::tasks::TaskType::Looping
+    crate::tasks::TaskType::Looping(self.loop_group.clone())
   }
   fn run_task(
       &mut self,
-      messages: &mut TaskMessenger,
+      _messages: &mut TaskMessenger,
       // the time since the function was ran last
       delta_time: f32,
     ) -> anyhow::Result<()> 
@@ -196,7 +199,7 @@ impl Task for GpuCamera {
 
 impl GpuCamera {
 
-  pub fn new(device: &wgpu::Device, size: PhysicalSize<u32>) -> Self {
+  pub fn new(device: &wgpu::Device, size: PhysicalSize<u32>, loop_group: LoopGroup) -> Self {
     let camera = camera::Camera {
       // position the camera 1 unit up and 2 units back
       // +z is out of the screen
@@ -257,6 +260,8 @@ impl GpuCamera {
       camera_bind_group,
       camera_bind_group_layout,
       camera_controller: CameraController::new(3.0),
+
+      loop_group,
     }
 
   }
