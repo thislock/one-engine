@@ -22,6 +22,7 @@ mod device_drivers;
 mod camera;
 mod camera_uniform_buffer;
 mod gpu_geometry;
+mod gpu_sync_data;
 mod gpu_texture;
 mod instances;
 

@@ -1,9 +1,14 @@
 // gets every process and organises it's types to be ran
 
-use std::{sync::Arc, time::Duration};
+use std::{
+  sync::Arc,
+  time::{self, Duration},
+};
 
 use crate::{
-  camera, device_drivers, gpu_bindgroups, gpu_pipeline, gpu_texture, render, task_lib,
+  camera, device_drivers, gpu_bindgroups, gpu_pipeline,
+  gpu_sync_data::{self, GpuTime},
+  gpu_texture, render, task_lib,
   tasks::{self, LoopGroup},
   tickrate,
 };
@@ -22,8 +27,10 @@ pub struct Engine {
   pub render_task: render::RenderTask,
 
   pub task_service: tasks::TaskService,
-
   pub loop_group: LoopGroup,
+
+  pub gpu_time: GpuTime,
+  pub engine_start_time: time::Instant,
 }
 
 impl Engine {
@@ -38,8 +45,11 @@ impl Engine {
     let texture_bundle = gpu_texture::TextureBundle::new(&drivers.device, &drivers.queue)
       .expect("failed to load texture buffer");
 
+    let gpu_time = gpu_sync_data::create_time_bind_group(&drivers.device);
+
     data_bindgroups.add_bind(texture_bundle.get_texture_bind_group().clone());
     data_bindgroups.add_bind(cam.camera_bind_group_layout.clone());
+    data_bindgroups.add_bind(gpu_time.layout.clone());
 
     let data_pipeline = gpu_pipeline::PipelineData::new(&data_bindgroups, &drivers)
       .await
@@ -56,6 +66,9 @@ impl Engine {
       task_service,
       tickrate,
       drivers,
+
+      gpu_time,
+      engine_start_time: time::Instant::now(),
 
       loop_group,
     }
@@ -94,10 +107,20 @@ impl Engine {
       .camera
       .camera_uniform
       .update_view_proj(&self.camera.camera);
+    // write to the camera variable on the gpu
     self.drivers.queue.write_buffer(
       &self.camera.camera_buffer,
       0,
       bytemuck::cast_slice(&[self.camera.camera_uniform]),
+    );
+    // write the time variable on the gpu
+    let secs_since_started = time::Instant::now()
+      .duration_since(self.engine_start_time)
+      .as_secs_f32();
+    self.drivers.queue.write_buffer(
+      &self.gpu_time.buffer,
+      0,
+      bytemuck::cast_slice(&[secs_since_started]),
     );
   }
 

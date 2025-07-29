@@ -13,6 +13,12 @@ struct CameraUniform {
 @group(1) @binding(0) // 1.
 var<uniform> camera: CameraUniform;
 
+struct GpuTime {
+    time_secs: f32,
+};
+@group(2) @binding(0)
+var<uniform> time: GpuTime;
+
 struct VertexInput {
     @location(0) position: vec3f,
     @location(1) tex_coords: vec2f,
@@ -30,14 +36,26 @@ fn vs_main(
 ) -> VertexOutput {
 
     let model_matrix = mat4x4<f32>(
-        instance.model_matrix_0,
-        instance.model_matrix_1,
-        instance.model_matrix_2,
-        instance.model_matrix_3,
+        instance.model_matrix_0, // scale horizontal
+        instance.model_matrix_1, // scale vertical
+        instance.model_matrix_2, // something?
+        instance.model_matrix_3, // scale? (i can't tell)
     );
 
+    let angle = time.time_secs;
+    let cos_theta = cos(angle);
+    let sin_theta = sin(angle);
+    let rotation_z = mat4x4<f32>(
+        vec4<f32>( cos_theta, 0.0, sin_theta, 0.0),
+        vec4<f32>(       0.0, 1.0, 0.0,       0.0),
+        vec4<f32>(-sin_theta, 0.0, cos_theta, 0.0),
+        vec4<f32>(       0.0, 0.0, 0.0,       1.0)
+    );
+
+    let rotated_instances = model_matrix * rotation_z;
+
     var out: VertexOutput;
-    out.clip_position = camera.view_proj * model_matrix * vec4<f32>(model.position, 1.0);
+    out.clip_position = camera.view_proj * rotated_instances * vec4<f32>(model.position, 1.0);
     out.tex_coords = model.tex_coords;
     return out;
 }

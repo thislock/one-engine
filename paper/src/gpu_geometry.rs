@@ -1,3 +1,4 @@
+
 use wgpu::{util::DeviceExt, RenderPass, VertexBufferLayout};
 
 use crate::{
@@ -72,7 +73,7 @@ impl Mesh {
   fn create_vertex_buffer(mesh_builder: &MeshBuilder, device: &wgpu::Device) -> wgpu::Buffer {
     let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
       label: Some("Vertex Buffer"),
-      contents: Self::format_vertices(&mesh_builder.vertices),
+      contents: bytemuck::cast_slice(&mesh_builder.vertices),
       usage: wgpu::BufferUsages::VERTEX,
     });
     vertex_buffer
@@ -81,7 +82,7 @@ impl Mesh {
   fn create_index_buffer(mesh_builder: &MeshBuilder, device: &wgpu::Device) -> wgpu::Buffer {
     let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
       label: Some("Index Buffer"),
-      contents: Self::format_indicies(&mesh_builder.indicies),
+      contents: bytemuck::cast_slice(&mesh_builder.indicies),
       usage: wgpu::BufferUsages::INDEX,
     });
     index_buffer
@@ -124,16 +125,9 @@ impl Mesh {
     }
   }
 
-  pub fn format_vertices(vert: &Vec<Vertex>) -> &[u8] {
-    bytemuck::cast_slice(vert)
-  }
-
-  pub fn format_indicies(indicies: &Vec<u32>) -> &[u8] {
-    bytemuck::cast_slice(indicies)
-  }
-
   const TEXTURE_BINDGROUP: u32 = 0;
   const CAMERA_TRANSFORM_BINDGROUP: u32 = 1;
+  const TIME_BINDGROUP: u32 = 2;
 
   pub fn render_mesh(&self, render_pass: &mut RenderPass<'_>, engine: &engine::Engine) {
     render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
@@ -151,6 +145,7 @@ impl Mesh {
       &engine.camera.camera_bind_group,
       &[],
     );
+    render_pass.set_bind_group(Self::TIME_BINDGROUP, &engine.gpu_time.bindgroup, &[]);
 
     let instance_range;
     if let Some(instance) = &self.instance_buffer {

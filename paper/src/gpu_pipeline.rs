@@ -5,6 +5,10 @@ pub struct PipelineData {
 }
 
 impl PipelineData {
+  fn get_gpu_buffers() -> Vec<wgpu::VertexBufferLayout<'static>> {
+    vec![gpu_geometry::Vertex::desc(), instances::Instance::desc()]
+  }
+
   const VERTEX_SHADER_MAIN: &str = "vs_main";
   const FRAGMENT_SHADER_MAIN: &str = "fs_main";
 
@@ -27,7 +31,7 @@ impl PipelineData {
       vertex: wgpu::VertexState {
         module: &shader_module,
         entry_point: Some(Self::VERTEX_SHADER_MAIN),
-        buffers: &[gpu_geometry::Vertex::desc(), instances::Instance::desc()],
+        buffers: &Self::get_gpu_buffers(),
         compilation_options: wgpu::PipelineCompilationOptions::default(),
       },
 
