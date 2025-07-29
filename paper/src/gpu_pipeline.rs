@@ -1,10 +1,14 @@
-use crate::{device_drivers, gpu_bindgroups, gpu_geometry};
+use crate::{device_drivers, gpu_bindgroups, gpu_geometry, instances};
 
 pub struct PipelineData {
   pub render_pipeline: wgpu::RenderPipeline,
 }
 
 impl PipelineData {
+
+  const VERTEX_SHADER_MAIN: &str = "vs_main";
+  const FRAGMENT_SHADER_MAIN: &str = "fs_main";
+
   fn init_render_pipeline(
     device: &wgpu::Device,
     shader_module: wgpu::ShaderModule,
@@ -23,15 +27,15 @@ impl PipelineData {
 
       vertex: wgpu::VertexState {
         module: &shader_module,
-        entry_point: Some("vs_main"),             // 1.
-        buffers: &[gpu_geometry::Vertex::desc()], // 2.
+        entry_point: Some(Self::VERTEX_SHADER_MAIN),
+        buffers: &[gpu_geometry::Vertex::desc(), instances::Instance::desc()],
         compilation_options: wgpu::PipelineCompilationOptions::default(),
       },
 
       fragment: Some(wgpu::FragmentState {
         // 3.
         module: &shader_module,
-        entry_point: Some("fs_main"),
+        entry_point: Some(Self::FRAGMENT_SHADER_MAIN),
         targets: &[Some(wgpu::ColorTargetState {
           // 4.
           format: surface_config.format,

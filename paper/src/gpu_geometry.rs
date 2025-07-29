@@ -1,6 +1,10 @@
+
 use wgpu::{util::DeviceExt, RenderPass, VertexBufferLayout};
 
-use crate::engine;
+use crate::{
+  engine,
+  instances::{self, Instance},
+};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -24,55 +28,100 @@ impl Vertex {
 }
 
 pub struct MeshBuilder {
-  vertex_buffer: Option<wgpu::Buffer>,
-  index_buffer: Option<wgpu::Buffer>,
+  vertices: Vec<Vertex>,
+  indicies: Vec<u32>,
+  instances: Option<Vec<Instance>>,
   texture_id: Option<String>,
 }
 
 impl MeshBuilder {
-  pub fn new() -> Self {
+  pub fn new(vertices: Vec<Vertex>, indices: Vec<u32>) -> Self {
     Self {
-      vertex_buffer: None,
-      index_buffer: None,
+      vertices,
+      indicies: indices,
       texture_id: None,
+      instances: None,
     }
   }
 
-  pub fn build(&self, device: wgpu::Device) -> Mesh {
+  pub fn add_instances(mut self, instances: Vec<Instance>) -> Self {
+    self.instances = Some(instances);
+    self
+  }
 
-    if let Some(vert_buffer) = self.vertex_buffer {
+  pub fn build(self, device: &wgpu::Device) -> anyhow::Result<Mesh> {
+    let texture_id = self.texture_id.clone().unwrap_or(String::from(""));
 
-    }
+    let mut mesh = Mesh::new(self, device);
 
-    todo!()
+    mesh.texture_id = texture_id;
 
+    Ok(mesh)
   }
 }
 
 pub struct Mesh {
-  pub vertex_buffer: wgpu::Buffer,
-  pub index_buffer: wgpu::Buffer,
-  pub num_indicies: u32,
+  vertex_buffer: wgpu::Buffer,
+  index_buffer: wgpu::Buffer,
+  instance_buffer: Option<wgpu::Buffer>,
+  instances: Option<Vec<Instance>>,
+  num_indicies: u32,
+  texture_id: String,
 }
 
 impl Mesh {
-  pub fn new(vertices: Vec<Vertex>, indicies: Vec<u32>, device: &wgpu::Device) -> Self {
+  fn create_vertex_buffer(mesh_builder: &MeshBuilder, device: &wgpu::Device) -> wgpu::Buffer {
     let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
       label: Some("Vertex Buffer"),
-      contents: Self::format_vertices(&vertices),
+      contents: Self::format_vertices(&mesh_builder.vertices),
       usage: wgpu::BufferUsages::VERTEX,
     });
+    vertex_buffer
+  }
 
+  fn create_index_buffer(mesh_builder: &MeshBuilder, device: &wgpu::Device) -> wgpu::Buffer {
     let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
       label: Some("Index Buffer"),
-      contents: Self::format_indicies(&indicies),
+      contents: Self::format_indicies(&mesh_builder.indicies),
       usage: wgpu::BufferUsages::INDEX,
     });
-    
+    index_buffer
+  }
+
+  fn create_instance_buffer(mesh_builder: &MeshBuilder, device: &wgpu::Device) -> wgpu::Buffer {
+    let instance_data: Vec<instances::InstanceRaw> = mesh_builder
+      .instances
+      .as_ref()
+      .unwrap()
+      .iter()
+      .map(|x| x.to_raw())
+      .collect();
+    let instance_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+      label: Some("Instance Buffer"),
+      contents: bytemuck::cast_slice(&instance_data),
+      usage: wgpu::BufferUsages::VERTEX,
+    });
+    instance_buffer
+  }
+
+  fn new(mesh_builder: MeshBuilder, device: &wgpu::Device) -> Self {
+    let vertex_buffer = Self::create_vertex_buffer(&mesh_builder, device);
+    let index_buffer = Self::create_index_buffer(&mesh_builder, device);
+
+    let instance_buffer;
+    if mesh_builder.instances.is_some() {
+      instance_buffer = Some(Self::create_instance_buffer(&mesh_builder, device));
+    } else {
+      instance_buffer = None;
+    }
+
     Self {
       vertex_buffer,
       index_buffer,
-      num_indicies: indicies.len() as u32,
+      instance_buffer,
+      instances: mesh_builder.instances,
+      num_indicies: mesh_builder.indicies.len() as u32,
+      texture_id: String::from(""),
     }
   }
 
@@ -91,9 +140,28 @@ impl Mesh {
     render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
     render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
 
-    render_pass.set_bind_group(Self::TEXTURE_BINDGROUP, engine.texture_bundle.get_diffuse_bind_group("yees"), &[]);
-    render_pass.set_bind_group(Self::CAMERA_TRANSFORM_BINDGROUP, &engine.camera.camera_bind_group, &[]);
+    render_pass.set_bind_group(
+      Self::TEXTURE_BINDGROUP,
+      engine
+        .texture_bundle
+        .get_diffuse_bind_group(&self.texture_id),
+      &[],
+    );
+    render_pass.set_bind_group(
+      Self::CAMERA_TRANSFORM_BINDGROUP,
+      &engine.camera.camera_bind_group,
+      &[],
+    );
 
-    render_pass.draw_indexed(0..self.num_indicies, 0, 0..1);
+    let instance_range;
+    if let Some(instance) = &self.instance_buffer {
+      render_pass.set_vertex_buffer(1, instance.slice(..));
+      render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+      instance_range = 0..self.instances.as_ref().unwrap().len() as _;
+    } else {
+      instance_range = 0..1;
+    }
+
+    render_pass.draw_indexed(0..self.num_indicies, 0, instance_range);
   }
 }

@@ -1,7 +1,6 @@
-use crate::{device_drivers, engine, gpu_geometry, gpu_texture};
+use crate::{device_drivers, engine, gpu_geometry, gpu_texture, instances};
 use std::iter;
 use wgpu::RenderPass;
-
 pub struct RenderTask {
   pub mesh: gpu_geometry::Mesh,
 }
@@ -44,7 +43,39 @@ impl RenderTask {
 
     let indicies = vec![0, 1, 4, 1, 2, 4, 2, 3, 4];
 
-    let mesh = gpu_geometry::Mesh::new(vertices, indicies, &drivers.device);
+    use cgmath::prelude::*;
+
+    const NUM_INSTANCES_PER_ROW: u32 = 10;
+    const INSTANCE_DISPLACEMENT: cgmath::Vector3<f32> = cgmath::Vector3::new(
+      NUM_INSTANCES_PER_ROW as f32 * 0.5,
+      0.0,
+      NUM_INSTANCES_PER_ROW as f32 * 0.5,
+    );
+
+    let instances = (0..NUM_INSTANCES_PER_ROW)
+      .flat_map(|z| {
+        (0..NUM_INSTANCES_PER_ROW).map(move |x| {
+          let pos = cgmath::Vector3 {
+            x: x as f32,
+            y: 0.0,
+            z: z as f32,
+          } - INSTANCE_DISPLACEMENT;
+          let rot = if pos.is_zero() {
+            // this is needed so an object at (0, 0, 0) won't get scaled to zero
+            // as Quaternions can affect scale if they're not created correctly
+            cgmath::Quaternion::from_axis_angle(cgmath::Vector3::unit_z(), cgmath::Deg(0.0))
+          } else {
+            cgmath::Quaternion::from_axis_angle(pos.normalize(), cgmath::Deg(45.0))
+          };
+
+          instances::Instance { pos, rot }
+        })
+      })
+      .collect::<Vec<_>>();
+
+    let mesh = gpu_geometry::MeshBuilder::new(vertices, indicies)
+      .add_instances(instances)
+      .build(&drivers.device)?;
 
     Ok(Self { mesh })
   }
@@ -52,14 +83,10 @@ impl RenderTask {
   pub fn render(&self, engine: &engine::Engine) -> std::result::Result<(), wgpu::SurfaceError> {
     let output = engine.drivers.surface.get_current_texture()?;
     let mut encoder = self.init_encoder(&engine.drivers);
-    let mut render_pass = self.init_render_pass(&output, &mut encoder);
+    let render_pass = self.init_render_pass(&output, &mut encoder);
 
     // tell the gpu what buffers to render
-    self.render_buffers(&mut render_pass, &engine);
-
-    // everything is already passed to the gpu,
-    // so we free this to hand ownership over to finishing process
-    drop(render_pass);
+    self.render_buffers(render_pass, &engine);
 
     engine
       .render_task
@@ -68,11 +95,11 @@ impl RenderTask {
     Ok(())
   }
 
-  fn render_buffers(&self, render_pass: &mut RenderPass<'_>, engine: &engine::Engine) {
+  fn render_buffers(&self, mut render_pass: RenderPass<'_>, engine: &engine::Engine) {
     // da boss (no touchy)
     render_pass.set_pipeline(&engine.data_pipeline.render_pipeline);
 
-    self.render_mesh(render_pass, engine);
+    self.mesh.render_mesh(&mut render_pass, engine);
   }
 
   fn finish_rendering(
