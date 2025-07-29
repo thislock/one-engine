@@ -1,4 +1,3 @@
-
 use wgpu::{util::DeviceExt, RenderPass, VertexBufferLayout};
 
 use crate::{

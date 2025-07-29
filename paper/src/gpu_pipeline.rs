@@ -5,7 +5,6 @@ pub struct PipelineData {
 }
 
 impl PipelineData {
-
   const VERTEX_SHADER_MAIN: &str = "vs_main";
   const FRAGMENT_SHADER_MAIN: &str = "fs_main";
 
