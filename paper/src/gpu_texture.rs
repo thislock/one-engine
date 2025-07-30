@@ -10,6 +10,7 @@ pub struct DynamicTexture {
   #[allow(unused)]
   pub texture: wgpu::Texture,
   pub view: wgpu::TextureView,
+  #[allow(unused)]
   pub sampler: wgpu::Sampler,
 }
 
