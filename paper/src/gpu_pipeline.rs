@@ -1,4 +1,4 @@
-use crate::{device_drivers, gpu_bindgroups, gpu_geometry, instances};
+use crate::{device_drivers, gpu_bindgroups, gpu_geometry, gpu_texture, instances};
 
 pub struct PipelineData {
   pub render_pipeline: wgpu::RenderPipeline,
@@ -47,6 +47,7 @@ impl PipelineData {
         })],
         compilation_options: wgpu::PipelineCompilationOptions::default(),
       }),
+
       primitive: wgpu::PrimitiveState {
         topology: wgpu::PrimitiveTopology::TriangleList, // 1.
         strip_index_format: None,
@@ -59,7 +60,15 @@ impl PipelineData {
         // Requires Features::CONSERVATIVE_RASTERIZATION
         conservative: false,
       },
-      depth_stencil: None, // 1.
+
+      depth_stencil: Some(wgpu::DepthStencilState {
+        format: gpu_texture::DynamicTexture::DEPTH_BUFFER_FORMAT,
+        depth_write_enabled: true,
+        depth_compare: wgpu::CompareFunction::Less,
+        stencil: wgpu::StencilState::default(),
+        bias: wgpu::DepthBiasState::default(),
+      }),
+
       multisample: wgpu::MultisampleState {
         count: 1,                         // 2.
         mask: !0,                         // 3.

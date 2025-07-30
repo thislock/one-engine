@@ -8,7 +8,8 @@ use std::{
 use crate::{
   camera, device_drivers, gpu_bindgroups, gpu_pipeline,
   gpu_sync_data::{self, GpuTime},
-  gpu_texture, render, task_lib,
+  gpu_texture::{self, DynamicTexture},
+  render, task_lib,
   tasks::{self, LoopGroup},
   tickrate,
 };
@@ -42,8 +43,8 @@ impl Engine {
     let loop_group = LoopGroup::new(Duration::from_secs_f64(1.0 / 60.0));
 
     let cam = camera::GpuCamera::new(&drivers.device, window.inner_size(), loop_group.clone());
-    let texture_bundle = gpu_texture::TextureBundle::new(&drivers.device, &drivers.queue)
-      .expect("failed to load texture buffer");
+    let texture_bundle =
+      gpu_texture::TextureBundle::new(&drivers).expect("failed to load texture buffer");
 
     let gpu_time = gpu_sync_data::create_time_bind_group(&drivers.device);
 
@@ -84,12 +85,15 @@ impl Engine {
 
   pub fn resize(&mut self, width: u32, height: u32) {
     if width > 0 && height > 0 {
+      // resize window
       self.drivers.surface_config.width = width;
       self.drivers.surface_config.height = height;
       self
         .drivers
         .surface
         .configure(&self.drivers.device, &self.drivers.surface_config);
+      // resize textures (make a new one)
+      self.texture_bundle.depth_buffer = DynamicTexture::create_depth_buffer(&self.drivers);
     }
   }
 

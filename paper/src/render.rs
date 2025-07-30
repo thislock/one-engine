@@ -8,14 +8,9 @@ pub struct RenderTask {
 impl RenderTask {
   pub fn new(drivers: &device_drivers::Drivers) -> anyhow::Result<Self> {
     // texture system
-    let mut texture_bundle = gpu_texture::TextureBundle::new(&drivers.device, &drivers.queue)?;
+    let mut texture_bundle = gpu_texture::TextureBundle::new(drivers)?;
 
-    texture_bundle.add_texture(
-      &drivers.device,
-      &drivers.queue,
-      include_bytes!("assets/yees.png"),
-      "yees",
-    )?;
+    texture_bundle.add_texture(drivers, include_bytes!("assets/yees.png"), "yees")?;
 
     // rendering stuff
     let vertices = vec![
@@ -83,7 +78,7 @@ impl RenderTask {
   pub fn render(&self, engine: &engine::Engine) -> std::result::Result<(), wgpu::SurfaceError> {
     let output = engine.drivers.surface.get_current_texture()?;
     let mut encoder = self.init_encoder(&engine.drivers);
-    let render_pass = self.init_render_pass(&output, &mut encoder);
+    let render_pass = self.init_render_pass(&output, &mut encoder, &engine.texture_bundle);
 
     // tell the gpu what buffers to render
     self.render_buffers(render_pass, &engine);
@@ -124,6 +119,7 @@ impl RenderTask {
     &self,
     output: &wgpu::SurfaceTexture,
     encoder: &'a mut wgpu::CommandEncoder,
+    texture_bundle: &gpu_texture::TextureBundle,
   ) -> RenderPass<'a> {
     let view = output
       .texture
@@ -139,7 +135,14 @@ impl RenderTask {
           store: wgpu::StoreOp::Store,
         },
       })],
-      depth_stencil_attachment: None,
+      depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+        view: &texture_bundle.depth_buffer.view,
+        depth_ops: Some(wgpu::Operations {
+          load: wgpu::LoadOp::Clear(1.0),
+          store: wgpu::StoreOp::Store,
+        }),
+        stencil_ops: None,
+      }),
       occlusion_query_set: None,
       timestamp_writes: None,
     });
