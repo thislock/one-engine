@@ -145,6 +145,7 @@ impl TaskTracker {
     let (tx2, rx2) = sync::mpsc::channel::<FromTask>();
 
     spawn_task(task, tx1.clone(), tx2, rx1);
+
     Self {
       time_info: TimeInfo::default(),
       sender: tx1,
@@ -169,7 +170,7 @@ fn spawn_task(
 
     while let Ok(message) = messages.reciever.recv() {
       match message {
-        ToTask::Exit => return,
+        ToTask::Exit => break,
         ToTask::Schedule(at_time) => {
           // sleep until it's the scheduled time.
           thread::sleep(at_time.duration_since(Instant::now()));
@@ -256,9 +257,7 @@ fn spawn_task_master(
     };
     while let Ok(recieved) = task_master.task_reciever.recv() {
       match recieved {
-        ToAdam::Exit => {
-          return;
-        }
+        ToAdam::Exit => break,
 
         ToAdam::AddTask(new_task) => {
           let task_type = new_task.get_type();
@@ -277,6 +276,10 @@ fn spawn_task_master(
           task_master.tasks.push(task);
         }
       }
+    }
+    // send every task the exit signal
+    for task in task_master.tasks {
+      let _ = task.sender.send(ToTask::Exit);
     }
   });
 }

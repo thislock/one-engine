@@ -5,23 +5,32 @@ use crate::{
   instances::{self, Instance},
 };
 
-#[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct Vertex {
-  pub position: [f32; 3],
-  pub tex_coords: [f32; 2],
+pub trait VertexTrait {
+  fn desc() -> VertexBufferLayout<'static> where Self: Sized;
 }
 
-impl Vertex {
-  const ATTRIBS: [wgpu::VertexAttribute; 2] =
-    wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2];
+pub type Vertex = Box<dyn VertexTrait>;
 
-  #[allow(unused)]
-  pub fn desc() -> VertexBufferLayout<'static> {
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct ModelVertex {
+  pos: [f32;3],
+  tex_coords: [f32;2],
+  normal: [f32;3],
+}
+
+impl VertexTrait for ModelVertex {
+  fn desc() -> VertexBufferLayout<'static> {
+    const ATTRIBS: [wgpu::VertexAttribute; 3] = wgpu::vertex_attr_array![
+      0 => Float32x3, // pos
+      1 => Float32x2, // tex_coords
+      2 => Float32x3  // normal
+    ];
+    
     wgpu::VertexBufferLayout {
       array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,
       step_mode: wgpu::VertexStepMode::Vertex,
-      attributes: &Self::ATTRIBS,
+      attributes: &ATTRIBS,
     }
   }
 }
@@ -72,7 +81,7 @@ impl Mesh {
   fn create_vertex_buffer(mesh_builder: &MeshBuilder, device: &wgpu::Device) -> wgpu::Buffer {
     let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
       label: Some("Vertex Buffer"),
-      contents: bytemuck::cast_slice(&mesh_builder.vertices),
+      contents: bytemuck::cast_slice(mesh_builder.vertices),
       usage: wgpu::BufferUsages::VERTEX,
     });
     vertex_buffer

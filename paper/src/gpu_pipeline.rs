@@ -1,4 +1,4 @@
-use crate::{device_drivers, gpu_bindgroups, gpu_geometry, gpu_texture, instances};
+use crate::{device_drivers, gpu_bindgroups, gpu_geometry::{self, VertexTrait}, gpu_texture, instances};
 
 pub struct PipelineData {
   pub render_pipeline: wgpu::RenderPipeline,
@@ -6,7 +6,7 @@ pub struct PipelineData {
 
 impl PipelineData {
   fn get_gpu_buffers() -> Vec<wgpu::VertexBufferLayout<'static>> {
-    vec![gpu_geometry::Vertex::desc(), instances::Instance::desc()]
+    vec![gpu_geometry::ModelVertex::desc(), instances::Instance::desc()]
   }
 
   const VERTEX_SHADER_MAIN: &str = "vs_main";
