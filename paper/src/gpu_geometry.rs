@@ -6,7 +6,10 @@ use crate::{
 };
 
 pub trait VertexTrait {
-  fn desc() -> VertexBufferLayout<'static> where Self: Sized;
+  fn desc() -> VertexBufferLayout<'static>
+  where
+    Self: Sized;
+  fn as_bytes(&self) -> Vec<u8>;
 }
 
 pub type Vertex = Box<dyn VertexTrait>;
@@ -14,9 +17,9 @@ pub type Vertex = Box<dyn VertexTrait>;
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct ModelVertex {
-  pos: [f32;3],
-  tex_coords: [f32;2],
-  normal: [f32;3],
+  pub pos: [f32; 3],
+  pub tex_coords: [f32; 2],
+  pub normal: [f32; 3],
 }
 
 impl VertexTrait for ModelVertex {
@@ -26,13 +29,35 @@ impl VertexTrait for ModelVertex {
       1 => Float32x2, // tex_coords
       2 => Float32x3  // normal
     ];
-    
+
     wgpu::VertexBufferLayout {
       array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,
       step_mode: wgpu::VertexStepMode::Vertex,
       attributes: &ATTRIBS,
     }
   }
+
+  fn as_bytes(&self) -> Vec<u8> {
+    let mut bytes: Vec<u8> = vec![];
+    bytes.extend(bytemuck::cast_slice(&self.pos));
+    bytes.extend(bytemuck::cast_slice(&self.tex_coords));
+    bytes.extend(bytemuck::cast_slice(&self.normal));
+    println!("{bytes:?}");
+    return bytes;
+  }
+}
+
+pub fn vertex_list_as_bytes(vertex_list: &Vec<Vertex>) -> Vec<u8> {
+  if vertex_list.len() == 0 {
+    return vec![];
+  }
+  let mut vertex_bytes = vec![];
+  let vertex_byte_count = vertex_list.get(0).unwrap().as_bytes().len();
+  vertex_bytes.reserve_exact(vertex_list.len() * vertex_byte_count);
+  for vertex in vertex_list {
+    vertex_bytes.extend(vertex.as_bytes());
+  }
+  return vertex_bytes;
 }
 
 pub struct MeshBuilder {
@@ -81,7 +106,7 @@ impl Mesh {
   fn create_vertex_buffer(mesh_builder: &MeshBuilder, device: &wgpu::Device) -> wgpu::Buffer {
     let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
       label: Some("Vertex Buffer"),
-      contents: bytemuck::cast_slice(mesh_builder.vertices),
+      contents: &vertex_list_as_bytes(&mesh_builder.vertices),
       usage: wgpu::BufferUsages::VERTEX,
     });
     vertex_buffer

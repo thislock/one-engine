@@ -1,4 +1,6 @@
-use crate::{paper_error, tasks::{LoopGroup, Task, TaskMessenger, TaskType}};
+use crate::{
+  tasks::{LoopGroup, Task, TaskMessenger, TaskType},
+};
 use std::sync::Arc;
 
 pub struct QueueRender {
@@ -16,7 +18,6 @@ impl Task for QueueRender {
     // the time since the function was ran last
     _delta_time: f32,
   ) -> anyhow::Result<()> {
-    
     let mut do_redraw = true;
     let msg = messages.reciever.try_recv();
 
@@ -25,7 +26,7 @@ impl Task for QueueRender {
         std::sync::mpsc::TryRecvError::Disconnected => {
           let _ = messages.self_sender.send(crate::tasks::ToTask::Exit);
           do_redraw = false;
-        },
+        }
         _ => do_redraw = true,
       }
     }
@@ -33,7 +34,7 @@ impl Task for QueueRender {
     if do_redraw {
       self.window.request_redraw()
     }
-    
+
     Ok(())
   }
 }
