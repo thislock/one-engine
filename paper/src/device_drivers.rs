@@ -1,34 +1,36 @@
 use std::sync::Arc;
 
-use winit::dpi::PhysicalSize;
+use crate::translate_surface;
 
 pub struct Drivers {
   pub surface: wgpu::Surface<'static>,
   pub device: wgpu::Device,
   pub queue: wgpu::Queue,
-  pub window: Arc<winit::window::Window>,
+  pub window: Arc<sdl3::video::Window>,
   pub surface_config: wgpu::SurfaceConfiguration,
 }
 
 impl Drivers {
-  async fn init_window(
-    window: Arc<winit::window::Window>,
+  async fn init_window<'a>(
+    window: Arc<sdl3::video::Window>,
   ) -> (
     wgpu::Surface<'static>,
     wgpu::Device,
     wgpu::Queue,
-    PhysicalSize<u32>,
+    (u32, u32),
     wgpu::TextureFormat,
     wgpu::SurfaceCapabilities,
   ) {
-    let size = window.inner_size();
-    // The instance is a handle to our GPU
-    // BackendBit::PRIMARY => Vulkan + Metal + DX12 + Browser WebGPU
+
     let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
       backends: wgpu::Backends::PRIMARY,
       ..Default::default()
     });
-    let surface = instance.create_surface(window.clone()).unwrap();
+    // The instance is a handle to our GPU
+    // BackendBit::PRIMARY => Vulkan + Metal + DX12 + Browser WebGPU
+    let surface = translate_surface::create_surface(&instance, window.clone()).unwrap();
+
+    let size = window.size();
     let adapter = instance
       .request_adapter(&wgpu::RequestAdapterOptions {
         power_preference: wgpu::PowerPreference::default(),
@@ -37,6 +39,7 @@ impl Drivers {
       })
       .await
       .unwrap();
+
     let (device, queue) = adapter
       .request_device(
         &wgpu::DeviceDescriptor {
@@ -57,17 +60,18 @@ impl Drivers {
       .copied()
       .find(|f| f.is_srgb())
       .unwrap_or(surface_caps.formats[0]);
-    (surface, device, queue, size, surface_format, surface_caps)
+
+    return (surface, device, queue, size, surface_format, surface_caps);
   }
 
-  pub async fn new(window: Arc<winit::window::Window>) -> Self {
+  pub async fn new(window: Arc<sdl3::video::Window>) -> Self {
     let (surface, device, queue, size, surface_format, surface_caps) =
       Self::init_window(window.clone()).await;
     let surface_config = wgpu::SurfaceConfiguration {
       usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
       format: surface_format,
-      width: size.width,
-      height: size.height,
+      width: size.0, // width
+      height: size.1, // height
       present_mode: surface_caps.present_modes[0],
       alpha_mode: surface_caps.alpha_modes[0],
       // may change later, the amount of frames queued for rendering, 1 means lower latency

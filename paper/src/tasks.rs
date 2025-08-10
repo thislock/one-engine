@@ -5,7 +5,6 @@ use std::{
   sync::{
     self,
     mpsc::{Receiver, Sender},
-    Arc,
   },
   thread,
   time::{Duration, Instant},
@@ -90,7 +89,7 @@ impl LoopGroup {
   }
 }
 
-use crate::paper_error;
+use crate::{paper_error, translate_surface::SyncWindow};
 
 #[derive(Debug)]
 #[allow(unused)]
@@ -209,12 +208,12 @@ impl TaskService {
     }
   }
 
-  pub fn new(window: Arc<winit::window::Window>) -> Self {
+  pub fn new(window: SyncWindow) -> Self {
     let (send_adam, adam_reciever) = sync::mpsc::channel::<ToAdam>();
     let (adam_sender, recieve_adam) = sync::mpsc::channel::<FromAdam>();
 
     spawn_task_master(
-      window.clone(),
+      window,
       adam_reciever,
       adam_sender,
       send_adam.clone(),
@@ -236,13 +235,13 @@ struct TaskMaster {
   task_reciever: Receiver<ToAdam>,
   task_sender: Sender<FromAdam>,
   self_sender: Sender<ToAdam>,
-  window: Arc<winit::window::Window>,
+  window: SyncWindow,
 
   tasks: Vec<TaskTracker>,
 }
 
 fn spawn_task_master(
-  window: Arc<winit::window::Window>,
+  window: SyncWindow,
   task_reciever: Receiver<ToAdam>,
   task_sender: Sender<FromAdam>,
   self_sender: Sender<ToAdam>,

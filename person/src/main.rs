@@ -1,5 +1,6 @@
 use paper::run;
 
-fn main() -> anyhow::Result<()> {
-  return run();
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+  return run().await;
 }

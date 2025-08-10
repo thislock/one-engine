@@ -1,11 +1,7 @@
-use winit::event_loop::EventLoop;
-
 use std::sync::Arc;
-
-use winit::{
-  application::ApplicationHandler, event::*, event_loop::ActiveEventLoop, keyboard::PhysicalKey,
-  window::Window,
-};
+extern crate sdl3;
+use sdl3::event::{Event, WindowEvent};
+use sdl3::keyboard::Keycode;
 
 // binds everything together
 #[path = "1engine.rs"]
@@ -17,6 +13,8 @@ mod task_lib;
 #[path = "error.rs"]
 mod paper_error;
 
+mod translate_surface;
+
 mod device_drivers;
 
 mod camera;
@@ -25,6 +23,8 @@ mod gpu_geometry;
 mod gpu_sync_data;
 mod gpu_texture;
 mod instances;
+
+mod object;
 
 mod render;
 mod tasks;
@@ -37,91 +37,6 @@ mod tickrate;
 #[path = "hardcoded_values/missing_texture.rs"]
 mod missing_texture;
 
-struct App {
-  engine: Option<engine::Engine>,
-}
-
-impl App {
-  fn new() -> Self {
-    Self { engine: None }
-  }
-}
-
-impl ApplicationHandler<engine::Engine> for App {
-  fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-    let window_attributes = Window::default_attributes();
-    let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
-
-    self.engine = Some(pollster::block_on(engine::Engine::new(window)));
-  }
-
-  fn user_event(&mut self, _event_loop: &ActiveEventLoop, engine: engine::Engine) {
-    self.engine = Some(engine);
-  }
-
-  fn window_event(
-    &mut self,
-    event_loop: &ActiveEventLoop,
-    _window_id: winit::window::WindowId,
-    event: WindowEvent,
-  ) {
-    let engine = match &mut self.engine {
-      Some(canvas) => canvas,
-      None => return,
-    };
-    match event {
-      WindowEvent::CloseRequested => {
-        event_loop.exit();
-      }
-
-      WindowEvent::Resized(size) => engine.resize(size.width, size.height),
-      WindowEvent::RedrawRequested => on_redraw(engine),
-      #[allow(unused_variables)]
-      WindowEvent::CursorMoved { position, .. } => {}
-
-      WindowEvent::KeyboardInput {
-        event:
-          KeyEvent {
-            physical_key: PhysicalKey::Code(_code),
-            state: _key_state,
-            ..
-          },
-        ..
-      } => engine.handle_key(&event),
-      _ => {}
-    }
-  }
-
-  fn new_events(&mut self, event_loop: &ActiveEventLoop, cause: StartCause) {
-    let _ = (event_loop, cause);
-  }
-
-  fn device_event(
-    &mut self,
-    event_loop: &ActiveEventLoop,
-    device_id: DeviceId,
-    event: DeviceEvent,
-  ) {
-    let _ = (event_loop, device_id, event);
-  }
-
-  fn exiting(&mut self, event_loop: &ActiveEventLoop) {
-    let _ = event_loop;
-  }
-  fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
-    let _ = event_loop;
-  }
-
-  // at the time of writing this, these are only for mobile devices (ios, android)
-
-  fn suspended(&mut self, event_loop: &ActiveEventLoop) {
-    let _ = event_loop;
-  }
-
-  fn memory_warning(&mut self, event_loop: &ActiveEventLoop) {
-    let _ = event_loop;
-  }
-}
 
 fn on_redraw(engine: &mut engine::Engine) {
   engine.update();
@@ -132,8 +47,8 @@ fn on_redraw(engine: &mut engine::Engine) {
 
     // reconfigure the surface if it's bad
     Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
-      let size = engine.get_window().inner_size();
-      engine.resize(size.width, size.height);
+      let size = engine.get_window().0.size();
+      engine.resize(size.0, size.1);
     }
 
     Err(e) => {
@@ -144,15 +59,75 @@ fn on_redraw(engine: &mut engine::Engine) {
   engine.tickrate.tick();
 }
 
-pub fn run() -> anyhow::Result<()> {
+// match event {
+//       WindowEvent::CloseRequested => {
+//         event_loop.exit();
+//       }
+
+//       WindowEvent::Resized(size) => engine.resize(size.width, size.height),
+//       WindowEvent::RedrawRequested => on_redraw(engine),
+//       #[allow(unused_variables)]
+//       WindowEvent::CursorMoved { position, .. } => {}
+
+//       WindowEvent::KeyboardInput {
+//         event:
+//           KeyEvent {
+//             physical_key: PhysicalKey::Code(_code),
+//             state: _key_state,
+//             ..
+//           },
+//         ..
+//       } => engine.handle_key(&event),
+//       _ => {}
+//     }
+
+pub async fn run() -> anyhow::Result<()> {
+
   env_logger::init();
 
-  let event_loop = EventLoop::with_user_event().build()?;
-  // tells the event loop to run in the background
-  event_loop.set_control_flow(winit::event_loop::ControlFlow::Wait);
+  let sdl_context = sdl3::init()?;
+  let video_subsystem = sdl_context.video()?;
+  let window = video_subsystem
+    .window("Raw Window Handle Example", 800, 600)
+    .position_centered()
+    .resizable()
+    .metal_view()
+    .build()?;
 
-  let mut app = App::new();
-  event_loop.run_app(&mut app)?;
+  let window = Arc::new(window);
+
+  let mut engine = engine::Engine::new(window.clone()).await;
+
+  let mut event_pump = sdl_context.event_pump()?;
+    'running: loop {
+        for event in event_pump.poll_iter() {
+            match event {
+                Event::Window {
+                    window_id,
+                    win_event:
+                        WindowEvent::PixelSizeChanged(width, height)
+                        | WindowEvent::Resized(width, height),
+                    ..
+                } if window_id == window.id() => {
+                  engine.drivers.surface_config.width  = width as u32;
+                  engine.drivers.surface_config.height = height as u32;
+                  engine.drivers.surface.configure(&engine.drivers.device, &engine.drivers.surface_config);
+                }
+                Event::Quit { .. }
+                | Event::KeyDown {
+                    keycode: Some(Keycode::Escape),
+                    ..
+                } => {
+                    break 'running;
+                }
+                e => {
+                    dbg!(e);
+                }
+            }
+        }
+
+        on_redraw(&mut engine);
+    }
 
   Ok(())
 }

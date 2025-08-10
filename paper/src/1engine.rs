@@ -11,7 +11,7 @@ use crate::{
   gpu_texture::{self, DynamicTexture},
   render, task_lib,
   tasks::{self, LoopGroup},
-  tickrate,
+  tickrate, translate_surface,
 };
 
 pub struct Engine {
@@ -35,14 +35,15 @@ pub struct Engine {
 }
 
 impl Engine {
-  async fn new_closed(window: Arc<winit::window::Window>) -> Self {
+
+  async fn new_closed(window: Arc<sdl3::video::Window>) -> Self {
     let mut data_bindgroups = gpu_bindgroups::BindGroups::new();
     let drivers = device_drivers::Drivers::new(window.clone()).await;
     let render_task = render::RenderTask::new(&drivers).expect("failed to load rendertask");
 
-    let loop_group = LoopGroup::new(Duration::from_secs_f64(1.0 / 60.0));
+    let loop_group = LoopGroup::new(Duration::from_secs_f64(1.0));
 
-    let cam = camera::GpuCamera::new(&drivers.device, window.inner_size(), loop_group.clone());
+    let cam = camera::GpuCamera::new(&drivers.device, window.size(), loop_group.clone());
     let texture_bundle =
       gpu_texture::TextureBundle::new(&drivers).expect("failed to load texture buffer");
 
@@ -55,7 +56,7 @@ impl Engine {
     let data_pipeline = gpu_pipeline::PipelineData::new(&data_bindgroups, &drivers)
       .await
       .unwrap();
-    let task_service = tasks::TaskService::new(window.clone());
+    let task_service = tasks::TaskService::new(translate_surface::SyncWindow(window.clone()));
     let tickrate = tickrate::Tickrate::new();
 
     Self {
@@ -75,7 +76,7 @@ impl Engine {
     }
   }
 
-  pub async fn new(window: Arc<winit::window::Window>) -> Self {
+  pub async fn new(window: Arc<sdl3::video::Window>) -> Self {
     let mut engine = Self::new_closed(window).await;
 
     task_lib::init_tasks(&mut engine);
@@ -97,13 +98,13 @@ impl Engine {
     }
   }
 
-  pub fn get_window(&self) -> Arc<winit::window::Window> {
-    self.drivers.window.clone()
+  pub fn get_window(&self) -> translate_surface::SyncWindow {
+    translate_surface::SyncWindow(self.drivers.window.clone())
   }
 
-  // ************************************** //
-  // ************     TASKS     *********** //
-  // ************************************** //
+  // **************************************** //
+  // ************     TASKS     ************* //
+  // **************************************** //
 
   pub fn update(&mut self) {
     self.camera.update_camera(self.tickrate.get_delta());
@@ -128,7 +129,4 @@ impl Engine {
     );
   }
 
-  pub fn handle_key(&mut self, event: &winit::event::WindowEvent) {
-    self.camera.camera_controller.process_events(&event);
-  }
 }

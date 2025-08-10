@@ -1,10 +1,6 @@
 use cgmath::{EuclideanSpace, Vector3};
 use wgpu::util::DeviceExt;
-use winit::{
-  dpi::PhysicalSize,
-  event::{ElementState, KeyEvent, WindowEvent},
-  keyboard::{KeyCode, PhysicalKey},
-};
+
 
 use crate::tasks::LoopGroup;
 #[allow(unused)]
@@ -73,58 +69,6 @@ impl CameraController {
       is_backward_pressed: false,
       is_moving_right: false,
       is_moving_left: false,
-    }
-  }
-
-  pub fn process_events(&mut self, event: &WindowEvent) -> bool {
-    match event {
-      WindowEvent::KeyboardInput {
-        event:
-          KeyEvent {
-            state,
-            physical_key: PhysicalKey::Code(keycode),
-            ..
-          },
-        ..
-      } => {
-        let is_pressed = *state == ElementState::Pressed;
-        match keycode {
-          KeyCode::ArrowUp => {
-            self.is_up_pressed = is_pressed;
-            true
-          }
-          KeyCode::ArrowLeft => {
-            self.is_left_pressed = is_pressed;
-            true
-          }
-          KeyCode::ArrowDown => {
-            self.is_down_pressed = is_pressed;
-            true
-          }
-          KeyCode::ArrowRight => {
-            self.is_right_pressed = is_pressed;
-            true
-          }
-          KeyCode::KeyD => {
-            self.is_moving_right = is_pressed;
-            true
-          }
-          KeyCode::KeyA => {
-            self.is_moving_left = is_pressed;
-            true
-          }
-          KeyCode::KeyW => {
-            self.is_forward_pressed = is_pressed;
-            true
-          }
-          KeyCode::KeyS => {
-            self.is_backward_pressed = is_pressed;
-            true
-          }
-          _ => false,
-        }
-      }
-      _ => false,
     }
   }
 
@@ -210,7 +154,7 @@ impl Task for GpuCamera {
 }
 
 impl GpuCamera {
-  pub fn new(device: &wgpu::Device, size: PhysicalSize<u32>, loop_group: LoopGroup) -> Self {
+  pub fn new(device: &wgpu::Device, size: (u32, u32), loop_group: LoopGroup) -> Self {
     let camera = camera::Camera {
       // position the camera 1 unit up and 2 units back
       // +z is out of the screen
@@ -219,7 +163,7 @@ impl GpuCamera {
       target: (0.0, 0.0, 0.0).into(),
       // which way is "up"
       up: cgmath::Vector3::unit_y(),
-      aspect: size.width as f32 / size.height as f32,
+      aspect: size.0 as f32 / size.1 as f32,
       fovy: 45.0,
       znear: 0.1,
       zfar: 100.0,

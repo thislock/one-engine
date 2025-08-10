@@ -1,10 +1,9 @@
 use crate::{
-  tasks::{LoopGroup, Task, TaskMessenger, TaskType},
+  tasks::{LoopGroup, Task, TaskMessenger, TaskType}, translate_surface,
 };
-use std::sync::Arc;
 
 pub struct QueueRender {
-  pub window: Arc<winit::window::Window>,
+  pub window: translate_surface::SyncWindow,
   pub loop_group: LoopGroup,
 }
 
@@ -32,7 +31,7 @@ impl Task for QueueRender {
     }
 
     if do_redraw {
-      self.window.request_redraw()
+      //self.window.0.request_redraw();
     }
 
     Ok(())
