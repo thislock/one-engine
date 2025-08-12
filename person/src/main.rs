@@ -1,6 +1,6 @@
-use paper::run;
+use paper::run_engine;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-  return run().await;
+  return run_engine().await;
 }

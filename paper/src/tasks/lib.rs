@@ -3,8 +3,6 @@ use crate::{
   tasks::{LoopGroup, Task},
 };
 
-mod queue_render;
-
 #[derive(Debug, Clone)]
 #[allow(unused)]
 struct BurnerTask {
@@ -33,26 +31,16 @@ impl Task for BurnerTask {
     delta_time: f32,
   ) -> anyhow::Result<()> {
     for i in 0..100_000 {
-      print!(
-        "{}",
-        pointlessly_complex_task((i as f32 * delta_time) as i32)
-      );
+      pointlessly_complex_task((i as f32 * delta_time) as i32);
     }
     Ok(())
   }
 }
 
 pub fn init_tasks(engine: &mut Engine) {
+  
   engine
     .task_service
-    .add_tasks(vec![Box::new(queue_render::QueueRender {
-      window: engine.get_window(),
-      loop_group: engine.loop_group.clone(),
-    })]);
+    .add_tasks(vec![Box::new(BurnerTask {loop_group: engine.loop_group.clone()})]);
 
-  // stress test
-
-  //let mut stress: Vec<Box<(dyn Task + Send + 'static)>> = vec![];
-  //for _ in 0..300 {stress.push(Box::new(BurnerTask {}));}
-  //engine.task_service.add_tasks(stress);
 }

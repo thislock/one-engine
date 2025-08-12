@@ -1,7 +1,6 @@
-use std::sync::Arc;
+use std::{sync::Arc, thread};
 extern crate sdl3;
 use sdl3::event::{Event, WindowEvent};
-use sdl3::keyboard::Keycode;
 
 // binds everything together
 #[path = "1engine.rs"]
@@ -58,71 +57,71 @@ fn on_redraw(engine: &mut engine::Engine) {
   engine.tickrate.tick();
 }
 
-// match event {
-//       WindowEvent::CloseRequested => {
-//         event_loop.exit();
-//       }
+#[allow(unused)]
+struct SdlHandle {
+  sdl_context: sdl3::Sdl,
+  sdl_window: Arc<sdl3::video::Window>,
+  event_pump: sdl3::EventPump,
+}
 
-//       WindowEvent::Resized(size) => engine.resize(size.width, size.height),
-//       WindowEvent::RedrawRequested => on_redraw(engine),
-//       #[allow(unused_variables)]
-//       WindowEvent::CursorMoved { position, .. } => {}
+impl SdlHandle {
+  fn new() -> anyhow::Result<Self> {
+    
+    env_logger::init();
 
-//       WindowEvent::KeyboardInput {
-//         event:
-//           KeyEvent {
-//             physical_key: PhysicalKey::Code(_code),
-//             state: _key_state,
-//             ..
-//           },
-//         ..
-//       } => engine.handle_key(&event),
-//       _ => {}
-//     }
+    let sdl_context = sdl3::init()?;
+    let video_subsystem = sdl_context.video()?;
+    let window = video_subsystem
+      .window("one engine demo", 800, 600)
+      .position_centered()
+      .resizable()
+      .metal_view()
+      .build()?;
 
-pub async fn run() -> anyhow::Result<()> {
-  env_logger::init();
+    let window = Arc::new(window);
 
-  let sdl_context = sdl3::init()?;
-  let video_subsystem = sdl_context.video()?;
-  let window = video_subsystem
-    .window("Raw Window Handle Example", 800, 600)
-    .position_centered()
-    .resizable()
-    .metal_view()
-    .build()?;
+    let event_pump = sdl_context.event_pump()?;
+    
+    Ok(Self {
+      sdl_context,
+      sdl_window: window,
+      event_pump,
+    })
+  }
+}
 
-  let window = Arc::new(window);
-
-  let mut engine = engine::Engine::new(window.clone()).await;
-
-  let mut event_pump = sdl_context.event_pump()?;
-  'running: loop {
-    for event in event_pump.poll_iter() {
-      match event {
-        Event::Window {
-          window_id,
-          win_event:
-            WindowEvent::PixelSizeChanged(width, height) | WindowEvent::Resized(width, height),
-          ..
-        } if window_id == window.id() => {
-          engine.resize(width as u32, height as u32);
-        }
-        Event::Quit { .. }
-        | Event::KeyDown {
-          keycode: Some(Keycode::Escape),
-          ..
-        } => {
-          break 'running;
-        }
-        e => {
-          //dbg!(e);
-        }
-      }
-    }
-
+pub async fn run_engine() -> anyhow::Result<()> {
+  let mut sdl_handle = SdlHandle::new()?;
+  let mut engine = engine::Engine::new(sdl_handle.sdl_window.clone()).await;
+  
+  while engine.is_running() {
+    handle_system_events(&mut sdl_handle, &mut engine);
+    // TODO: wait for all keyboard related tasks to finish, THEN render
     on_redraw(&mut engine);
+    thread::sleep(engine.tickrate.get_sleep_time());
   }
 
   Ok(())
+}
+
+fn handle_system_events(
+  sdl_handle: &mut SdlHandle,
+  engine: &mut engine::Engine,
+) {
+  for event in sdl_handle.event_pump.poll_iter() {
+    match event {
+      Event::Window {
+        window_id,
+        win_event:
+          WindowEvent::PixelSizeChanged(width, height) | WindowEvent::Resized(width, height),
+        ..
+      } if window_id == sdl_handle.sdl_window.id() => {
+        engine.resize(width as u32, height as u32);
+      }
+      Event::Quit { .. } => {
+        engine.request_close();
+      }
+      _ => {}
+    }
+  }
 }
