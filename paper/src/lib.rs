@@ -106,12 +106,7 @@ pub async fn run() -> anyhow::Result<()> {
             WindowEvent::PixelSizeChanged(width, height) | WindowEvent::Resized(width, height),
           ..
         } if window_id == window.id() => {
-          engine.drivers.surface_config.width = width as u32;
-          engine.drivers.surface_config.height = height as u32;
-          engine
-            .drivers
-            .surface
-            .configure(&engine.drivers.device, &engine.drivers.surface_config);
+          engine.resize(width as u32, height as u32);
         }
         Event::Quit { .. }
         | Event::KeyDown {
@@ -121,7 +116,7 @@ pub async fn run() -> anyhow::Result<()> {
           break 'running;
         }
         e => {
-          dbg!(e);
+          //dbg!(e);
         }
       }
     }
