@@ -37,7 +37,6 @@ mod tickrate;
 #[path = "hardcoded_values/missing_texture.rs"]
 mod missing_texture;
 
-
 fn on_redraw(engine: &mut engine::Engine) {
   engine.update();
 
@@ -82,7 +81,6 @@ fn on_redraw(engine: &mut engine::Engine) {
 //     }
 
 pub async fn run() -> anyhow::Result<()> {
-
   env_logger::init();
 
   let sdl_context = sdl3::init()?;
@@ -99,35 +97,37 @@ pub async fn run() -> anyhow::Result<()> {
   let mut engine = engine::Engine::new(window.clone()).await;
 
   let mut event_pump = sdl_context.event_pump()?;
-    'running: loop {
-        for event in event_pump.poll_iter() {
-            match event {
-                Event::Window {
-                    window_id,
-                    win_event:
-                        WindowEvent::PixelSizeChanged(width, height)
-                        | WindowEvent::Resized(width, height),
-                    ..
-                } if window_id == window.id() => {
-                  engine.drivers.surface_config.width  = width as u32;
-                  engine.drivers.surface_config.height = height as u32;
-                  engine.drivers.surface.configure(&engine.drivers.device, &engine.drivers.surface_config);
-                }
-                Event::Quit { .. }
-                | Event::KeyDown {
-                    keycode: Some(Keycode::Escape),
-                    ..
-                } => {
-                    break 'running;
-                }
-                e => {
-                    dbg!(e);
-                }
-            }
+  'running: loop {
+    for event in event_pump.poll_iter() {
+      match event {
+        Event::Window {
+          window_id,
+          win_event:
+            WindowEvent::PixelSizeChanged(width, height) | WindowEvent::Resized(width, height),
+          ..
+        } if window_id == window.id() => {
+          engine.drivers.surface_config.width = width as u32;
+          engine.drivers.surface_config.height = height as u32;
+          engine
+            .drivers
+            .surface
+            .configure(&engine.drivers.device, &engine.drivers.surface_config);
         }
-
-        on_redraw(&mut engine);
+        Event::Quit { .. }
+        | Event::KeyDown {
+          keycode: Some(Keycode::Escape),
+          ..
+        } => {
+          break 'running;
+        }
+        e => {
+          dbg!(e);
+        }
+      }
     }
+
+    on_redraw(&mut engine);
+  }
 
   Ok(())
 }

@@ -1,4 +1,3 @@
-
 use sdl3::video::Window;
 use wgpu::rwh::{HasDisplayHandle, HasWindowHandle};
 

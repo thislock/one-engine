@@ -35,7 +35,6 @@ pub struct Engine {
 }
 
 impl Engine {
-
   async fn new_closed(window: Arc<sdl3::video::Window>) -> Self {
     let mut data_bindgroups = gpu_bindgroups::BindGroups::new();
     let drivers = device_drivers::Drivers::new(window.clone()).await;
@@ -128,5 +127,4 @@ impl Engine {
       bytemuck::cast_slice(&[secs_since_started]),
     );
   }
-
 }

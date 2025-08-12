@@ -12,9 +12,9 @@ struct Rotation {
 
 impl Rotation {
   const fn default() -> Self {
-    Rotation { 
-      front: Vec3::new(0.0,0.0,0.0), 
-      pitch: 0.0, 
+    Rotation {
+      front: Vec3::new(0.0, 0.0, 0.0),
+      pitch: 0.0,
       yaw: 0.0,
     }
   }
@@ -25,7 +25,7 @@ trait Object3D {
   const OBJECT_RIGHT: Vec3 = Vec3::new(1.0, 0.0, 0.0);
 
   const DEFAULT_ROTATION: Rotation = Rotation::default();
-  const DEFAULT_POSITION: Vec3 = Vec3::new(0.0,0.0,0.0,);
+  const DEFAULT_POSITION: Vec3 = Vec3::new(0.0, 0.0, 0.0);
 
   fn get_pos() -> Vec3;
   fn get_rot() -> Rotation;

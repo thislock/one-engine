@@ -1,4 +1,8 @@
-use crate::{device_drivers, engine, gpu_geometry::{self, Vertex}, gpu_texture, instances};
+use crate::{
+  device_drivers, engine,
+  gpu_geometry::{self, Vertex},
+  gpu_texture, instances,
+};
 use std::iter;
 use wgpu::RenderPass;
 pub struct RenderTask {
@@ -15,7 +19,9 @@ impl RenderTask {
     // rendering stuff
     let create_vertex = |pos: [f32; 3], tex_coords: [f32; 2]| -> Vertex {
       Box::new(gpu_geometry::ModelVertex {
-        pos,tex_coords,normal: [0.0; 3],
+        pos,
+        tex_coords,
+        normal: [0.0; 3],
       })
     };
     let vertices: Vec<Vertex> = vec![

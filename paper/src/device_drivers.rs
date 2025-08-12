@@ -21,7 +21,6 @@ impl Drivers {
     wgpu::TextureFormat,
     wgpu::SurfaceCapabilities,
   ) {
-
     let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
       backends: wgpu::Backends::PRIMARY,
       ..Default::default()
@@ -70,7 +69,7 @@ impl Drivers {
     let surface_config = wgpu::SurfaceConfiguration {
       usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
       format: surface_format,
-      width: size.0, // width
+      width: size.0,  // width
       height: size.1, // height
       present_mode: surface_caps.present_modes[0],
       alpha_mode: surface_caps.alpha_modes[0],

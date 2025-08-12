@@ -1,5 +1,6 @@
 use crate::{
-  tasks::{LoopGroup, Task, TaskMessenger, TaskType}, translate_surface,
+  tasks::{LoopGroup, Task, TaskMessenger, TaskType},
+  translate_surface,
 };
 
 pub struct QueueRender {

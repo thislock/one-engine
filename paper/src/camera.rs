@@ -1,7 +1,6 @@
 use cgmath::{EuclideanSpace, Vector3};
 use wgpu::util::DeviceExt;
 
-
 use crate::tasks::LoopGroup;
 #[allow(unused)]
 use crate::{

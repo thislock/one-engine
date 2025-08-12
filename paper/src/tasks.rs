@@ -212,12 +212,7 @@ impl TaskService {
     let (send_adam, adam_reciever) = sync::mpsc::channel::<ToAdam>();
     let (adam_sender, recieve_adam) = sync::mpsc::channel::<FromAdam>();
 
-    spawn_task_master(
-      window,
-      adam_reciever,
-      adam_sender,
-      send_adam.clone(),
-    );
+    spawn_task_master(window, adam_reciever, adam_sender, send_adam.clone());
 
     Self {
       send_adam,
