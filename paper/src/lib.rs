@@ -66,7 +66,6 @@ struct SdlHandle {
 
 impl SdlHandle {
   fn new() -> anyhow::Result<Self> {
-    
     env_logger::init();
 
     let sdl_context = sdl3::init()?;
@@ -81,7 +80,7 @@ impl SdlHandle {
     let window = Arc::new(window);
 
     let event_pump = sdl_context.event_pump()?;
-    
+
     Ok(Self {
       sdl_context,
       sdl_window: window,
@@ -93,7 +92,8 @@ impl SdlHandle {
 pub async fn run_engine() -> anyhow::Result<()> {
   let mut sdl_handle = SdlHandle::new()?;
   let mut engine = engine::Engine::new(sdl_handle.sdl_window.clone()).await;
-  
+
+
   while engine.is_running() {
     handle_system_events(&mut sdl_handle, &mut engine);
     // TODO: wait for all keyboard related tasks to finish, THEN render
@@ -104,10 +104,7 @@ pub async fn run_engine() -> anyhow::Result<()> {
   Ok(())
 }
 
-fn handle_system_events(
-  sdl_handle: &mut SdlHandle,
-  engine: &mut engine::Engine,
-) {
+fn handle_system_events(sdl_handle: &mut SdlHandle, engine: &mut engine::Engine) {
   for event in sdl_handle.event_pump.poll_iter() {
     match event {
       Event::Window {

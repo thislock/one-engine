@@ -38,9 +38,7 @@ impl Task for BurnerTask {
 }
 
 pub fn init_tasks(engine: &mut Engine) {
-  
-  engine
-    .task_service
-    .add_tasks(vec![Box::new(BurnerTask {loop_group: engine.loop_group.clone()})]);
-
+  engine.task_service.add_tasks(vec![Box::new(BurnerTask {
+    loop_group: engine.loop_group.clone(),
+  })]);
 }

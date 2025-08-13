@@ -22,7 +22,7 @@ impl Tickrate {
   }
 
   pub fn get_sleep_time(&self) -> time::Duration {
-    time::Duration::from_secs_f32(1.0/60.0)
+    time::Duration::from_secs_f32(1.0 / 60.0)
   }
 
   // will sleep inbetween frames

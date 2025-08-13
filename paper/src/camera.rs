@@ -1,7 +1,9 @@
-use cgmath::{EuclideanSpace, Vector3};
+use std::time;
+
+use cgmath::{EuclideanSpace, InnerSpace, Vector3};
 use wgpu::util::DeviceExt;
 
-use crate::tasks::LoopGroup;
+use crate::{object, tasks::LoopGroup};
 #[allow(unused)]
 use crate::{
   camera, camera_uniform_buffer,
@@ -19,109 +21,105 @@ pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::from_co
 );
 
 pub struct Camera {
-  pub eye: cgmath::Point3<f32>,
-  pub target: cgmath::Point3<f32>,
-  // which axis is up
-  pub up: cgmath::Vector3<f32>,
+  pub position: cgmath::Point3<f32>,
+  pub yaw_radians: f32,
+  pub pitch_radians: f32,
+  pub fov_degrees: f32,
   pub aspect: f32,
-  pub fovy: f32,
   pub znear: f32,
   pub zfar: f32,
 }
 
 impl Camera {
-  pub fn build_view_projection_matrix(&self) -> cgmath::Matrix4<f32> {
-    // 1.
-    let view = cgmath::Matrix4::look_at_rh(self.eye, self.target, self.up);
-    // 2.
-    let proj = cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar);
-    // 3.
-    return proj * view;
-  }
-}
-
-pub struct CameraController {
-  speed: f32,
-  base_speed: f32,
-  is_up_pressed: bool,
-  is_down_pressed: bool,
-  is_left_pressed: bool,
-  is_right_pressed: bool,
-
-  is_forward_pressed: bool,
-  is_backward_pressed: bool,
-  is_moving_right: bool,
-  is_moving_left: bool,
-}
-
-impl CameraController {
-  fn new(speed: f32) -> Self {
+  pub fn new(position: cgmath::Point3<f32>, fov_degrees: f32, aspect_ratio: (u32, u32)) -> Self {
     Self {
-      speed,
-      base_speed: speed,
-      is_down_pressed: false,
-      is_up_pressed: false,
-      is_left_pressed: false,
-      is_right_pressed: false,
-
-      is_forward_pressed: false,
-      is_backward_pressed: false,
-      is_moving_right: false,
-      is_moving_left: false,
+      position,
+      fov_degrees,
+      yaw_radians: 0.0,
+      pitch_radians: 0.0,
+      aspect: (aspect_ratio.0 as f32) / (aspect_ratio.1 as f32),
+      znear: 0.001,
+      zfar: 100.0,
     }
   }
 
-  fn get_degrees(rot: f32) -> f32 {
-    (rot + 1.0) * 180.0
-  }
+  pub fn build_view_projection_matrix(&self) -> cgmath::Matrix4<f32> {
+    let forward = self.forward_vector();
+    let target = self.position + forward;
+    let up = cgmath::Vector3::new(0.0, 1.0, 0.0);
 
-  #[allow(unused)]
-  pub fn print_vec_degrees(rot: &Vector3<f32>) {
-    println!(
-      "x: {} y: {} z: {}",
-      Self::get_degrees(rot.x),
-      Self::get_degrees(rot.y),
-      Self::get_degrees(rot.z),
+    let view = cgmath::Matrix4::look_at_rh(self.position, target, up);
+    let proj = cgmath::perspective(
+      cgmath::Deg(self.fov_degrees),
+      self.aspect,
+      self.znear,
+      self.zfar,
     );
+
+    proj * view
   }
 
-  pub fn update_camera(&self, camera: &mut Camera) {
-    use cgmath::InnerSpace;
-    let forward = camera.eye.to_vec();
-    let forward_norm = forward.normalize();
-    let forward_mag = forward.magnitude();
-    // Prevents glitching when the camera gets too close to the
-    // center of the scene.
-    if self.is_forward_pressed && forward_mag > self.speed {
-      camera.eye -= forward_norm * self.speed;
+  pub fn forward_vector(&self) -> Vector3<f32> {
+    object::Vec3::new(
+      self.yaw_radians.cos() * self.pitch_radians.cos(),
+      self.pitch_radians.sin(),
+      self.yaw_radians.sin() * self.pitch_radians.cos(),
+    )
+    .normalize()
+  }
+
+  pub fn update_camera(
+    &mut self,
+    delta_yaw: f32,
+    delta_pitch: f32,
+    is_forward_pressed: bool,
+    is_backward_pressed: bool,
+    is_right_pressed: bool,
+    is_left_pressed: bool,
+    is_up_pressed: bool,
+    is_down_pressed: bool,
+    speed: f32,
+  ) {
+    use cgmath::{vec3, InnerSpace};
+
+    // Update yaw/pitch from mouse movement
+    self.yaw_radians += delta_yaw;
+    self.pitch_radians += delta_pitch;
+
+    // Clamp pitch to avoid flipping (about ±85°)
+    let max_pitch = std::f32::consts::FRAC_PI_2 - 0.1;
+    self.pitch_radians = self.pitch_radians.clamp(-max_pitch, max_pitch);
+
+    // Calculate forward vector from yaw/pitch
+    let forward = vec3(
+      self.yaw_radians.cos() * self.pitch_radians.cos(),
+      self.pitch_radians.sin(),
+      self.yaw_radians.sin() * self.pitch_radians.cos(),
+    )
+    .normalize();
+
+    // Right and up vectors
+    let right = forward.cross(vec3(0.0, 1.0, 0.0)).normalize();
+    let up = vec3(0.0, 1.0, 0.0);
+
+    // Apply movement
+    if is_forward_pressed {
+      self.position += forward * speed;
     }
-    if self.is_backward_pressed {
-      camera.eye += forward_norm * self.speed;
+    if is_backward_pressed {
+      self.position -= forward * speed;
     }
-    let vertical_lock = Vector3 {
-      x: 1.0,
-      y: 0.0,
-      z: 0.0,
-    };
-    let right = forward_norm.cross(camera.up);
-    let up = forward_norm.cross(vertical_lock);
-    // Redo radius calc in case the forward/backward is pressed.
-    let forward = camera.target - camera.eye;
-    let forward_mag = forward.magnitude();
-    if self.is_up_pressed {
-      camera.eye = camera.target - (forward + up * self.speed).normalize() * forward_mag;
+    if is_right_pressed {
+      self.position += right * speed;
     }
-    if self.is_down_pressed {
-      camera.eye = camera.target - (forward - up * self.speed).normalize() * forward_mag;
+    if is_left_pressed {
+      self.position -= right * speed;
     }
-    if self.is_right_pressed {
-      // Rescale the distance between the target and the eye so
-      // that it doesn't change. The eye, therefore, still
-      // lies on the circle made by the target and eye.
-      camera.eye = camera.target - (forward + right * self.speed).normalize() * forward_mag;
+    if is_up_pressed {
+      self.position += up * speed;
     }
-    if self.is_left_pressed {
-      camera.eye = camera.target - (forward - right * self.speed).normalize() * forward_mag;
+    if is_down_pressed {
+      self.position -= up * speed;
     }
   }
 }
@@ -132,7 +130,7 @@ pub struct GpuCamera {
   pub camera_buffer: wgpu::Buffer,
   pub camera_bind_group: wgpu::BindGroup,
   pub camera_bind_group_layout: wgpu::BindGroupLayout,
-  pub camera_controller: CameraController,
+  pub const_speed: f32,
 
   loop_group: LoopGroup,
 }
@@ -154,19 +152,8 @@ impl Task for GpuCamera {
 
 impl GpuCamera {
   pub fn new(device: &wgpu::Device, size: (u32, u32), loop_group: LoopGroup) -> Self {
-    let camera = camera::Camera {
-      // position the camera 1 unit up and 2 units back
-      // +z is out of the screen
-      eye: (0.0, 1.0, 2.0).into(),
-      // have it look at the origin
-      target: (0.0, 0.0, 0.0).into(),
-      // which way is "up"
-      up: cgmath::Vector3::unit_y(),
-      aspect: size.0 as f32 / size.1 as f32,
-      fovy: 45.0,
-      znear: 0.1,
-      zfar: 100.0,
-    };
+    let default_camera_position = cgmath::Point3::new(0.0, 3.0, 1.0);
+    let camera = Camera::new(default_camera_position, 45.0, size);
 
     let mut camera_uniform = camera_uniform_buffer::CameraUniform::new();
     camera_uniform.update_view_proj(&camera);
@@ -206,14 +193,24 @@ impl GpuCamera {
       camera_buffer,
       camera_bind_group,
       camera_bind_group_layout,
-      camera_controller: CameraController::new(3.0),
+      const_speed: 2.2,
 
       loop_group,
     }
   }
 
   pub fn update_camera(&mut self, delta: f32) {
-    self.camera_controller.speed = self.camera_controller.base_speed * delta;
-    self.camera_controller.update_camera(&mut self.camera);
+  
+    self.camera.update_camera(
+      0.01,
+      -0.001,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      self.const_speed * delta,
+    );
   }
 }

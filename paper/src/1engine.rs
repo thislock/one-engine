@@ -37,7 +37,6 @@ pub struct Engine {
 }
 
 impl Engine {
-
   async fn new_closed(window: Arc<sdl3::video::Window>) -> Self {
     let mut data_bindgroups = gpu_bindgroups::BindGroups::new();
     let drivers = device_drivers::Drivers::new(window.clone()).await;
@@ -133,12 +132,14 @@ impl Engine {
   }
 
   // ************************ STARTUP/CLOSING LOGIC ************************** //
-  
+
   // TODO: for a final engine, don't hard close when the os tries to,
   // make sure to save any game data, or at least ask the player if they're SURE they want to close right now
   pub fn request_close(&mut self) {
     self.is_running = false;
   }
 
-  pub fn is_running(&self) -> bool {self.is_running}
+  pub fn is_running(&self) -> bool {
+    self.is_running
+  }
 }
