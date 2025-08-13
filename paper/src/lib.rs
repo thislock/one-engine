@@ -12,6 +12,10 @@ mod task_lib;
 #[path = "error.rs"]
 mod paper_error;
 
+mod user_input;
+
+mod maths;
+
 mod translate_surface;
 
 mod device_drivers;
@@ -58,10 +62,10 @@ fn on_redraw(engine: &mut engine::Engine) {
 }
 
 #[allow(unused)]
-struct SdlHandle {
-  sdl_context: sdl3::Sdl,
-  sdl_window: Arc<sdl3::video::Window>,
-  event_pump: sdl3::EventPump,
+pub struct SdlHandle {
+  pub sdl_context: sdl3::Sdl,
+  pub sdl_window: Arc<sdl3::video::Window>,
+  pub event_pump: sdl3::EventPump,
 }
 
 impl SdlHandle {
@@ -93,9 +97,17 @@ pub async fn run_engine() -> anyhow::Result<()> {
   let mut sdl_handle = SdlHandle::new()?;
   let mut engine = engine::Engine::new(sdl_handle.sdl_window.clone()).await;
 
+  sdl_handle
+    .sdl_context
+    .mouse()
+    .set_relative_mouse_mode(&sdl_handle.sdl_window, true);
 
   while engine.is_running() {
-    handle_system_events(&mut sdl_handle, &mut engine);
+    for event in sdl_handle.event_pump.poll_event().iter() {
+      handle_system_events(event, &mut sdl_handle, &mut engine);
+      engine.user_input.poll_movement(event);
+    }
+
     // TODO: wait for all keyboard related tasks to finish, THEN render
     on_redraw(&mut engine);
     thread::sleep(engine.tickrate.get_sleep_time());
@@ -104,21 +116,22 @@ pub async fn run_engine() -> anyhow::Result<()> {
   Ok(())
 }
 
-fn handle_system_events(sdl_handle: &mut SdlHandle, engine: &mut engine::Engine) {
-  for event in sdl_handle.event_pump.poll_iter() {
-    match event {
-      Event::Window {
-        window_id,
-        win_event:
-          WindowEvent::PixelSizeChanged(width, height) | WindowEvent::Resized(width, height),
-        ..
-      } if window_id == sdl_handle.sdl_window.id() => {
-        engine.resize(width as u32, height as u32);
-      }
-      Event::Quit { .. } => {
-        engine.request_close();
-      }
-      _ => {}
+fn handle_system_events(
+  event: &sdl3::event::Event,
+  sdl_handle: &mut SdlHandle,
+  engine: &mut engine::Engine,
+) {
+  match event {
+    Event::Window {
+      window_id,
+      win_event: WindowEvent::PixelSizeChanged(width, height) | WindowEvent::Resized(width, height),
+      ..
+    } if *window_id == sdl_handle.sdl_window.id() => {
+      engine.resize(*width as u32, *height as u32);
     }
+    Event::Quit { .. } => {
+      engine.request_close();
+    }
+    _ => {}
   }
 }

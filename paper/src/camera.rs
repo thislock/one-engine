@@ -3,7 +3,7 @@ use std::time;
 use cgmath::{EuclideanSpace, InnerSpace, Vector3};
 use wgpu::util::DeviceExt;
 
-use crate::{object, tasks::LoopGroup};
+use crate::{maths, object, tasks::LoopGroup};
 #[allow(unused)]
 use crate::{
   camera, camera_uniform_buffer,
@@ -60,7 +60,7 @@ impl Camera {
   }
 
   pub fn forward_vector(&self) -> Vector3<f32> {
-    object::Vec3::new(
+    maths::Vec3::new(
       self.yaw_radians.cos() * self.pitch_radians.cos(),
       self.pitch_radians.sin(),
       self.yaw_radians.sin() * self.pitch_radians.cos(),
@@ -200,11 +200,10 @@ impl GpuCamera {
   }
 
   pub fn update_camera(&mut self, delta: f32) {
-  
     self.camera.update_camera(
       0.01,
       -0.001,
-      true,
+      false,
       false,
       false,
       false,

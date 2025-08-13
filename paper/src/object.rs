@@ -1,6 +1,5 @@
-use cgmath::Vector3;
 
-pub type Vec3 = Vector3<f32>;
+use crate::maths::*;
 
 pub const WORLD_UP: Vec3 = Vec3::new(0.0, 1.0, 0.0);
 

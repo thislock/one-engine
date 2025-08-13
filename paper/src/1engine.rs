@@ -11,7 +11,7 @@ use crate::{
   gpu_texture::{self, DynamicTexture},
   render, task_lib,
   tasks::{self, LoopGroup},
-  tickrate, translate_surface,
+  tickrate, translate_surface, user_input,
 };
 
 pub struct Engine {
@@ -32,6 +32,8 @@ pub struct Engine {
 
   pub gpu_time: GpuTime,
   pub engine_start_time: time::Instant,
+
+  pub user_input: user_input::MovementHandler,
 
   is_running: bool,
 }
@@ -60,6 +62,8 @@ impl Engine {
     let task_service = tasks::TaskService::new(translate_surface::SyncWindow(window.clone()));
     let tickrate = tickrate::Tickrate::new();
 
+    let user_input = user_input::MovementHandler::new();
+
     Self {
       render_task,
       texture_bundle,
@@ -72,6 +76,8 @@ impl Engine {
 
       gpu_time,
       engine_start_time: time::Instant::now(),
+
+      user_input,
 
       loop_group,
       is_running: true,
