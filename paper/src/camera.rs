@@ -3,7 +3,11 @@ use std::time;
 use cgmath::{EuclideanSpace, InnerSpace, Vector3};
 use wgpu::util::DeviceExt;
 
-use crate::{maths, object, tasks::LoopGroup};
+use crate::{
+  maths, object,
+  tasks::LoopGroup,
+  user_input::{InputType, MovementDirection},
+};
 #[allow(unused)]
 use crate::{
   camera, camera_uniform_buffer,
@@ -68,23 +72,12 @@ impl Camera {
     .normalize()
   }
 
-  pub fn update_camera(
-    &mut self,
-    delta_yaw: f32,
-    delta_pitch: f32,
-    is_forward_pressed: bool,
-    is_backward_pressed: bool,
-    is_right_pressed: bool,
-    is_left_pressed: bool,
-    is_up_pressed: bool,
-    is_down_pressed: bool,
-    speed: f32,
-  ) {
+  pub fn update_camera(&mut self, movement: Vec<&InputType>, speed: f32) {
     use cgmath::{vec3, InnerSpace};
 
     // Update yaw/pitch from mouse movement
-    self.yaw_radians += delta_yaw;
-    self.pitch_radians += delta_pitch;
+    self.yaw_radians += 0.0;
+    self.pitch_radians += 0.0;
 
     // Clamp pitch to avoid flipping (about ±85°)
     let max_pitch = std::f32::consts::FRAC_PI_2 - 0.1;
@@ -98,29 +91,37 @@ impl Camera {
     )
     .normalize();
 
-    // Right and up vectors
-    let right = forward.cross(vec3(0.0, 1.0, 0.0)).normalize();
-    let up = vec3(0.0, 1.0, 0.0);
+    for input in movement {
+      match input {
+        InputType::MoveCamera(dir) => {
+          let dir_2d = dir.direction.to_vec2();
+          let dir_3d = vec3(dir_2d.x, 0.0, dir_2d.y).normalize();
+          //println!("time: {:?} at direction: {:?}", time::SystemTime::now(), dir_3d);
+          self.position += dir_3d * speed;
+        }
+        InputType::RotateCamera(dir) => {}
+      }
+    }
 
-    // Apply movement
-    if is_forward_pressed {
-      self.position += forward * speed;
-    }
-    if is_backward_pressed {
-      self.position -= forward * speed;
-    }
-    if is_right_pressed {
-      self.position += right * speed;
-    }
-    if is_left_pressed {
-      self.position -= right * speed;
-    }
-    if is_up_pressed {
-      self.position += up * speed;
-    }
-    if is_down_pressed {
-      self.position -= up * speed;
-    }
+    // // Apply movement
+    // if is_forward_pressed {
+    //   self.position += forward * speed;
+    // }
+    // if is_backward_pressed {
+    //   self.position -= forward * speed;
+    // }
+    // if is_right_pressed {
+    //   self.position += right * speed;
+    // }
+    // if is_left_pressed {
+    //   self.position -= right * speed;
+    // }
+    // if is_up_pressed {
+    //   self.position += up * speed;
+    // }
+    // if is_down_pressed {
+    //   self.position -= up * speed;
+    // }
   }
 }
 
@@ -133,21 +134,6 @@ pub struct GpuCamera {
   pub const_speed: f32,
 
   loop_group: LoopGroup,
-}
-
-impl Task for GpuCamera {
-  fn get_type(&self) -> crate::tasks::TaskType {
-    crate::tasks::TaskType::Looping(self.loop_group.clone())
-  }
-  fn run_task(
-    &mut self,
-    _messages: &mut TaskMessenger,
-    // the time since the function was ran last
-    delta_time: f32,
-  ) -> anyhow::Result<()> {
-    self.update_camera(delta_time);
-    Ok(())
-  }
 }
 
 impl GpuCamera {
@@ -199,17 +185,9 @@ impl GpuCamera {
     }
   }
 
-  pub fn update_camera(&mut self, delta: f32) {
-    self.camera.update_camera(
-      0.01,
-      -0.001,
-      false,
-      false,
-      false,
-      false,
-      false,
-      false,
-      self.const_speed * delta,
-    );
+  pub fn update_camera(&mut self, movement: Vec<&InputType>, delta: f32) {
+    self
+      .camera
+      .update_camera(movement, self.const_speed * delta);
   }
 }

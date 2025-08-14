@@ -115,7 +115,9 @@ impl Engine {
   // **************************************** //
 
   pub fn update(&mut self) {
-    self.camera.update_camera(self.tickrate.get_delta());
+    self
+      .camera
+      .update_camera(self.user_input.get_movement(), self.tickrate.get_delta());
     self
       .camera
       .camera_uniform
