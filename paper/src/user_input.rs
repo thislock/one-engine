@@ -4,7 +4,6 @@ use crate::{
   maths::{self, Angle},
 };
 
-
 type InputFunction = Box<dyn Fn(&mut Vec<InputType>) -> ()>;
 struct InputWrapper {
   keycode: Keycode,
@@ -26,11 +25,12 @@ impl InputWrapper {
   }
 }
 
-
+#[derive(Debug)]
 pub struct MovementDirection {
   pub direction: maths::Scalar,
 }
 
+#[derive(Debug)]
 pub enum InputType {
   MoveCamera(MovementDirection),
   RotateCamera(MovementDirection),
@@ -59,7 +59,7 @@ impl MovementHandler {
   }
 
   fn get_input() -> Vec<InputWrapper> {
-    const CAMERA_SPEED: f64 = 0.5;
+    const CAMERA_SPEED: f64 = 1.0;
     return vec![
       InputWrapper::new(
         Keycode::W,
@@ -81,6 +81,7 @@ impl MovementHandler {
   }
 
   pub fn poll_movement(&mut self, event: &sdl3::event::Event) {
+
     self.unread_movement.clear();
 
     match event {
@@ -93,6 +94,23 @@ impl MovementHandler {
         if let Some(key) = keycode {
           self.set_keys(key, false);
         }
+      }
+
+      sdl3::event::Event::MouseMotion { xrel, yrel, .. } => {
+        
+        let x = *xrel;
+        let y = *yrel;
+
+        let magnitude = (x.powf(2.0) + y.powf(2.0)).sqrt() as f64;
+        let rot = maths::Angle::from_radians((y.atan2(x)) as f64);
+        
+        let scalar = maths::Scalar::new(magnitude, rot);
+
+        self
+          .unread_movement
+          .push(InputType::RotateCamera(MovementDirection {
+            direction: scalar,
+          }));
       }
 
       _ => {}

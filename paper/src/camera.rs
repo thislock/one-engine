@@ -87,8 +87,16 @@ impl Camera {
           .normalize();
           self.position += forward * speed;
         }
-        
-        InputType::RotateCamera(dir) => {}
+
+        InputType::RotateCamera(dir) => {
+
+          const SENSITIVITY: f64 = 0.1;
+
+          let dx = dir.direction.magnitude * dir.direction.angle.as_radians().cos();
+          let dy = dir.direction.magnitude * dir.direction.angle.as_radians().sin();
+          self.yaw_radians   += (dx * SENSITIVITY) as f32 * speed;
+          self.pitch_radians -= (dy * SENSITIVITY) as f32 * speed;
+        }
       }
     }
 
@@ -173,6 +181,6 @@ impl GpuCamera {
   pub fn update_camera(&mut self, movement: Vec<&InputType>, delta: f32) {
     self
       .camera
-      .update_camera(movement, self.const_speed * delta);
+      .update_camera(movement, delta);
   }
 }
