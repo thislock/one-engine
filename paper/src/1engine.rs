@@ -46,7 +46,7 @@ impl Engine {
 
     let loop_group = LoopGroup::new(Duration::from_secs_f64(1.0));
 
-    let cam = camera::GpuCamera::new(&drivers.device, window.size(), loop_group.clone());
+    let cam = camera::GpuCamera::new(&drivers.device, window.size());
     let texture_bundle =
       gpu_texture::TextureBundle::new(&drivers).expect("failed to load texture buffer");
 

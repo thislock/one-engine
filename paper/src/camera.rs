@@ -1,13 +1,7 @@
-use std::time;
-
-use cgmath::{EuclideanSpace, InnerSpace, Vector3};
+use cgmath::{InnerSpace, Vector3};
 use wgpu::util::DeviceExt;
 
-use crate::{
-  maths, object,
-  tasks::LoopGroup,
-  user_input::{InputType, MovementDirection},
-};
+use crate::{maths, user_input::InputType};
 #[allow(unused)]
 use crate::{
   camera, camera_uniform_buffer,
@@ -75,30 +69,25 @@ impl Camera {
   pub fn update_camera(&mut self, movement: Vec<&InputType>, speed: f32) {
     use cgmath::{vec3, InnerSpace};
 
-    // Update yaw/pitch from mouse movement
-    self.yaw_radians += 0.0;
-    self.pitch_radians += 0.0;
-
     // Clamp pitch to avoid flipping (about ±85°)
     let max_pitch = std::f32::consts::FRAC_PI_2 - 0.1;
     self.pitch_radians = self.pitch_radians.clamp(-max_pitch, max_pitch);
 
-    // Calculate forward vector from yaw/pitch
-    let forward = vec3(
-      self.yaw_radians.cos() * self.pitch_radians.cos(),
-      self.pitch_radians.sin(),
-      self.yaw_radians.sin() * self.pitch_radians.cos(),
-    )
-    .normalize();
-
     for input in movement {
       match input {
         InputType::MoveCamera(dir) => {
-          let dir_2d = dir.direction.to_vec2();
-          let dir_3d = vec3(dir_2d.x, 0.0, dir_2d.y).normalize();
-          //println!("time: {:?} at direction: {:?}", time::SystemTime::now(), dir_3d);
-          self.position += dir_3d * speed;
+          // Calculate forward vector from yaw/pitch
+          let yaw = self.yaw_radians + dir.direction.angle.as_radians() as f32;
+          let pitch = self.pitch_radians;
+          let forward = vec3(
+            yaw.cos() * pitch.cos(),
+            pitch.sin(),
+            yaw.sin() * pitch.cos(),
+          )
+          .normalize();
+          self.position += forward * speed;
         }
+        
         InputType::RotateCamera(dir) => {}
       }
     }
@@ -132,12 +121,10 @@ pub struct GpuCamera {
   pub camera_bind_group: wgpu::BindGroup,
   pub camera_bind_group_layout: wgpu::BindGroupLayout,
   pub const_speed: f32,
-
-  loop_group: LoopGroup,
 }
 
 impl GpuCamera {
-  pub fn new(device: &wgpu::Device, size: (u32, u32), loop_group: LoopGroup) -> Self {
+  pub fn new(device: &wgpu::Device, size: (u32, u32)) -> Self {
     let default_camera_position = cgmath::Point3::new(0.0, 3.0, 1.0);
     let camera = Camera::new(default_camera_position, 45.0, size);
 
@@ -180,8 +167,6 @@ impl GpuCamera {
       camera_bind_group,
       camera_bind_group_layout,
       const_speed: 2.2,
-
-      loop_group,
     }
   }
 

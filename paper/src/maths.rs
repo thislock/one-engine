@@ -71,6 +71,7 @@ pub struct Scalar {
   pub angle: Angle,
 }
 
+#[allow(unused)]
 impl Scalar {
   /// Creates a new scalar with magnitude and angle (in radians)
   pub fn new(magnitude: f64, angle: Angle) -> Self {

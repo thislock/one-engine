@@ -1,24 +1,9 @@
-use std::time;
-
-use sdl3::{keyboard::Keycode, sys::keycode::SDL_Keycode};
+use sdl3::keyboard::Keycode;
 
 use crate::{
   maths::{self, Angle},
 };
 
-pub struct MovementDirection {
-  pub direction: maths::Scalar,
-}
-
-pub enum InputType {
-  MoveCamera(MovementDirection),
-  RotateCamera(MovementDirection),
-}
-
-pub struct MovementHandler {
-  unread_movement: Vec<InputType>,
-  input_wrappers: Vec<InputWrapper>,
-}
 
 type InputFunction = Box<dyn Fn(&mut Vec<InputType>) -> ()>;
 struct InputWrapper {
@@ -41,15 +26,29 @@ impl InputWrapper {
   }
 }
 
+
+pub struct MovementDirection {
+  pub direction: maths::Scalar,
+}
+
+pub enum InputType {
+  MoveCamera(MovementDirection),
+  RotateCamera(MovementDirection),
+}
+
+pub struct MovementHandler {
+  unread_movement: Vec<InputType>,
+  input_wrappers: Vec<InputWrapper>,
+}
+
 fn add_scalar(input: &mut Vec<InputType>, rot_degrees: f64, magnitude: f64) {
-    input
-      .push(InputType::MoveCamera(MovementDirection {
-        direction: maths::Scalar {
-          magnitude,
-          angle: Angle::from_degrees(rot_degrees),
-        },
-      }))
-  }
+  input.push(InputType::MoveCamera(MovementDirection {
+    direction: maths::Scalar {
+      magnitude,
+      angle: Angle::from_degrees(rot_degrees),
+    },
+  }))
+}
 
 impl MovementHandler {
   pub fn new() -> Self {
@@ -104,7 +103,6 @@ impl MovementHandler {
         wrapper.run_logic(&mut self.unread_movement);
       }
     }
-
   }
 
   fn set_keys(&mut self, key: &Keycode, pressed: bool) {
