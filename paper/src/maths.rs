@@ -11,57 +11,106 @@ pub struct Angle {
 #[allow(unused)]
 impl Angle {
   /// Create from radians
-  #[inline(always)]
+  #[inline]
   pub fn from_radians(rad: f64) -> Self {
-    Self { radians: rad }
+    Self { radians: rad }.normalized()
   }
 
   /// Create from degrees
-  #[inline(always)]
+  #[inline]
   pub fn from_degrees(deg: f64) -> Self {
     Self {
       radians: deg.to_radians(),
     }
+    .normalized()
   }
 
   /// Create from grads (full turn = 400 grads)
-  #[inline(always)]
+  #[inline]
   pub fn from_grads(grads: f64) -> Self {
     Self {
       radians: grads * std::f64::consts::PI / 200.0,
     }
+    .normalized()
   }
 
   /// Create from turns (full turn = 1.0)
-  #[inline(always)]
+  #[inline]
   pub fn from_turns(turns: f64) -> Self {
     Self {
       radians: turns * std::f64::consts::TAU,
     }
+    .normalized()
+    .normalized()
   }
 
   /// Get radians
-  #[inline(always)]
+  #[inline]
   pub fn as_radians(&self) -> f64 {
     self.radians
   }
 
   /// Get degrees
-  #[inline(always)]
+  #[inline]
   pub fn as_degrees(&self) -> f64 {
     self.radians.to_degrees()
   }
 
   /// Get grads
-  #[inline(always)]
+  #[inline]
   pub fn as_grads(&self) -> f64 {
     self.radians * 200.0 / std::f64::consts::PI
   }
 
   /// Get turns
-  #[inline(always)]
+  #[inline]
   pub fn as_turns(&self) -> f64 {
     self.radians / std::f64::consts::TAU
+  }
+
+  #[inline]
+  fn normalized(&self) -> Self {
+    let mut rad = self.radians % std::f64::consts::TAU;
+    if rad < 0.0 {
+      rad += std::f64::consts::TAU;
+    }
+    Self { radians: rad }
+  }
+}
+
+impl Add for Angle {
+  type Output = Self;
+
+  fn add(self, rhs: Self) -> Self::Output {
+    Angle::from_radians(self.radians + rhs.radians)
+  }
+}
+
+impl AddAssign for Angle {
+  fn add_assign(&mut self, rhs: Self) {
+    self.radians += rhs.radians;
+  }
+}
+
+impl Sub for Angle {
+  type Output = Self;
+
+  fn sub(self, rhs: Self) -> Self::Output {
+    Angle::from_radians(self.radians - rhs.radians)
+  }
+}
+
+impl SubAssign for Angle {
+  fn sub_assign(&mut self, rhs: Self) {
+    self.radians -= rhs.radians;
+  }
+}
+
+impl Neg for Angle {
+  type Output = Self;
+
+  fn neg(self) -> Self::Output {
+    Angle::from_radians(-self.radians)
   }
 }
 
@@ -102,7 +151,7 @@ impl Scalar {
   }
 }
 
-use std::ops::{Add, Sub, Mul, Div};
+use std::ops::{Add, AddAssign, Div, Mul, Neg, Sub, SubAssign};
 
 impl Add for Scalar {
   type Output = Self;

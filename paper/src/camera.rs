@@ -69,10 +69,6 @@ impl Camera {
   pub fn update_camera(&mut self, movement: Vec<InputType>, speed: f32) {
     use cgmath::{vec3, InnerSpace};
 
-    // Clamp pitch to avoid flipping (about ±85°)
-    let max_pitch = std::f32::consts::FRAC_PI_2 - 0.1;
-    self.pitch_radians = self.pitch_radians.clamp(-max_pitch, max_pitch);
-
     for input in movement {
       match input {
         InputType::MoveCamera(dir) => {
@@ -85,16 +81,19 @@ impl Camera {
             yaw.sin() * pitch.cos(),
           )
           .normalize();
-          self.position += forward * speed;
+          self.position += forward * (speed * dir.direction.magnitude as f32);
         }
 
         InputType::RotateCamera(dir) => {
           const SENSITIVITY: f64 = 0.1;
 
-          let dx = dir.direction.magnitude * dir.direction.angle.as_radians().cos();
-          let dy = dir.direction.magnitude * dir.direction.angle.as_radians().sin();
+          let dx = dir.pitch;
+          let dy = dir.yaw;
           self.yaw_radians += (dx * SENSITIVITY) as f32 * speed;
           self.pitch_radians -= (dy * SENSITIVITY) as f32 * speed;
+
+          let max_pitch = std::f32::consts::FRAC_PI_2 - 0.1;
+          self.pitch_radians = self.pitch_radians.clamp(-max_pitch, max_pitch);
         }
       }
     }

@@ -122,17 +122,16 @@ pub async fn run_engine() -> anyhow::Result<()> {
   let mut engine = engine::Engine::new(&sdl_handle, sdl_handle.sdl_window.clone()).await;
 
   let mut movement_buffer = vec![];
-  
-  while engine.is_running() {
 
+  while engine.is_running() {
     movement_buffer.clear();
 
     for event in sdl_handle.event_pump.poll_event().iter() {
       handle_system_events(event, &mut sdl_handle, &mut engine);
-      MovementHandler::poll_movement(&mut movement_buffer, &mut engine, event);
+      MovementHandler::poll_movement(&mut engine, &mut movement_buffer, event);
     }
 
-    MovementHandler::apply_movement(&mut engine, &mut movement_buffer);    
+    MovementHandler::apply_movement(&mut engine, &mut movement_buffer);
 
     // TODO: wait for all keyboard related tasks to finish, THEN render
     on_redraw(&mut engine);

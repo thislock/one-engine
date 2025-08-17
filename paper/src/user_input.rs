@@ -3,7 +3,9 @@ use std::sync::Arc;
 use sdl3::keyboard::Keycode;
 
 use crate::{
-  engine::Engine, maths::{self, Angle}, SdlHandle
+  engine::Engine,
+  maths::{self, Angle},
+  SdlHandle,
 };
 
 type InputFunction = Box<dyn Fn(&mut Vec<InputType>) -> ()>;
@@ -27,15 +29,21 @@ impl InputWrapper {
   }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct MovementDirection {
   pub direction: maths::Scalar,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
+pub struct RotationDirection {
+  pub pitch: f64, 
+  pub yaw: f64,
+}
+
+#[derive(Debug, Clone, Copy)]
 pub enum InputType {
   MoveCamera(MovementDirection),
-  RotateCamera(MovementDirection),
+  RotateCamera(RotationDirection),
 }
 
 pub struct MovementHandler {
@@ -84,8 +92,11 @@ impl MovementHandler {
     ];
   }
 
-  pub fn poll_movement(unread_movement: &mut Vec<InputType>, engine: &mut Engine, event: &sdl3::event::Event) {
-
+  pub fn poll_movement(
+    engine: &mut Engine,
+    unread_movement: &mut Vec<InputType>,
+    event: &sdl3::event::Event,
+  ) {
     match event {
       sdl3::event::Event::KeyDown { keycode, .. } => {
         if let Some(key) = keycode {
@@ -99,7 +110,9 @@ impl MovementHandler {
       }
 
       sdl3::event::Event::MouseMotion { x, y, .. } => {
-        engine.user_input.calculate_mouse_delta(unread_movement, *x, *y);
+        engine
+          .user_input
+          .calculate_mouse_delta(unread_movement, *x, *y);
       }
 
       _ => {}
@@ -110,51 +123,70 @@ impl MovementHandler {
         wrapper.run_logic(unread_movement);
       }
     }
-
   }
 
   pub fn apply_movement(engine: &mut Engine, unread_movement: &mut Vec<InputType>) {
-    
-    let mut move_cam = (0.0, 0.0);
+    let mut move_cam = (0.0, Angle::from_degrees(0.0));
     let mut rot_cam = (0.0, 0.0);
-    
+
     for unread in unread_movement {
       match unread {
         InputType::MoveCamera(dir) => {
           move_cam.0 += dir.direction.magnitude;
-          move_cam.1 += dir.direction.angle.as_radians();
+          move_cam.1 += dir.direction.angle;
         }
         InputType::RotateCamera(dir) => {
-          rot_cam.0 += dir.direction.magnitude;
-          rot_cam.1 += dir.direction.angle.as_radians();
+          rot_cam.0 += dir.pitch;
+          rot_cam.1 += dir.yaw;
         }
       }
     }
 
-    let move_cam = InputType::MoveCamera(   MovementDirection {direction: maths::Scalar::new(move_cam.0, maths::Angle::from_radians(move_cam.1))});
-    let rot_cam =  InputType::RotateCamera( MovementDirection {direction: maths::Scalar::new(rot_cam.0, maths::Angle::from_radians(rot_cam.1))});
+    let from_raw = |raw: (f64, Angle)| {
+      return MovementDirection {
+        direction: maths::Scalar::new(raw.0, raw.1),
+      };
+    };
+
+    
+    let move_cam = InputType::MoveCamera(from_raw(move_cam));
+    let rot_cam = InputType::RotateCamera(RotationDirection { pitch: rot_cam.0, yaw: rot_cam.1 });
     let movement = vec![move_cam, rot_cam];
 
-    engine.camera.update_camera(movement, engine.tickrate.get_delta());
+    // for input in [move_cam, rot_cam] {
+    //   let push = input;
+    //   match input {
+    //     InputType::MoveCamera(mv_cam) => {
+    //       if mv_cam.direction.magnitude != 0.0 {
+    //         movement.push(push);
+    //       }
+    //     }
+    //     InputType::RotateCamera(rt_cam) => {
+    //       if rt_cam.direction.magnitude != 0.0 {
+    //         movement.push(push);
+    //       }
+    //     }
+    //   }
+    // }
+
+    engine
+      .camera
+      .update_camera(movement, 0.01);
   }
 
   pub fn calculate_mouse_delta(&mut self, unread_movement: &mut Vec<InputType>, x: f32, y: f32) {
     let window_size = self.window.size();
     let reset_pos = (window_size.0 / 2, window_size.1 / 2);
     let sensitivity = 0.5;
-  
+
     let x = (x - reset_pos.0 as f32) as f64 * sensitivity;
     let y = (y - reset_pos.1 as f32) as f64 * sensitivity;
 
-    let magnitude = (x*x + y*y).sqrt() as f64;
-    let rot = maths::Angle::from_radians((y.atan2(x)) as f64);
+    let rot_dir = InputType::RotateCamera(
+      RotationDirection { pitch: x, yaw: y }
+    );
 
-    let scalar = maths::Scalar::new(magnitude, rot);
-
-    unread_movement
-      .push(InputType::RotateCamera(MovementDirection {
-        direction: scalar,
-      }));
+    unread_movement.push(rot_dir);
 
     self
       .mouse_util
@@ -168,5 +200,4 @@ impl MovementHandler {
       }
     }
   }
-
 }
