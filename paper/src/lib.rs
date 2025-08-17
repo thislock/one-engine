@@ -99,7 +99,7 @@ impl SdlHandle {
 
 fn handle_system_events(
   event: &sdl3::event::Event,
-  sdl_handle: &mut SdlHandle,
+  window: &mut Arc<sdl3::video::Window>,
   engine: &mut engine::Engine,
 ) {
   match event {
@@ -107,7 +107,7 @@ fn handle_system_events(
       window_id,
       win_event: WindowEvent::PixelSizeChanged(width, height) | WindowEvent::Resized(width, height),
       ..
-    } if *window_id == sdl_handle.sdl_window.id() => {
+    } if *window_id == window.id() => {
       engine.resize(*width as u32, *height as u32);
     }
     Event::Quit { .. } => {
@@ -122,13 +122,14 @@ pub async fn run_engine() -> anyhow::Result<()> {
   let mut engine = engine::Engine::new(&sdl_handle, sdl_handle.sdl_window.clone()).await;
 
   let mut movement_buffer = vec![];
+  let mut sys_window = sdl_handle.sdl_window.clone();
 
   while engine.is_running() {
     movement_buffer.clear();
 
-    for event in sdl_handle.event_pump.poll_event().iter() {
-      handle_system_events(event, &mut sdl_handle, &mut engine);
-      MovementHandler::poll_movement(&mut engine, &mut movement_buffer, event);
+    for event in sdl_handle.event_pump.poll_iter() {
+      handle_system_events(&event, &mut sys_window, &mut engine);
+      MovementHandler::poll_movement(&mut engine, &mut movement_buffer, &event);
     }
 
     MovementHandler::apply_movement(&mut engine, &mut movement_buffer);

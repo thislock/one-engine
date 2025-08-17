@@ -147,37 +147,21 @@ impl MovementHandler {
         direction: maths::Scalar::new(raw.0, raw.1),
       };
     };
-
     
     let move_cam = InputType::MoveCamera(from_raw(move_cam));
     let rot_cam = InputType::RotateCamera(RotationDirection { pitch: rot_cam.0, yaw: rot_cam.1 });
+    
     let movement = vec![move_cam, rot_cam];
-
-    // for input in [move_cam, rot_cam] {
-    //   let push = input;
-    //   match input {
-    //     InputType::MoveCamera(mv_cam) => {
-    //       if mv_cam.direction.magnitude != 0.0 {
-    //         movement.push(push);
-    //       }
-    //     }
-    //     InputType::RotateCamera(rt_cam) => {
-    //       if rt_cam.direction.magnitude != 0.0 {
-    //         movement.push(push);
-    //       }
-    //     }
-    //   }
-    // }
-
+    
     engine
       .camera
-      .update_camera(movement, 0.01);
+      .update_camera(movement, engine.tickrate.get_delta());
   }
 
   pub fn calculate_mouse_delta(&mut self, unread_movement: &mut Vec<InputType>, x: f32, y: f32) {
     let window_size = self.window.size();
     let reset_pos = (window_size.0 / 2, window_size.1 / 2);
-    let sensitivity = 0.5;
+    let sensitivity = 2.0;
 
     let x = (x - reset_pos.0 as f32) as f64 * sensitivity;
     let y = (y - reset_pos.1 as f32) as f64 * sensitivity;
