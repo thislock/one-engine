@@ -2,6 +2,8 @@ use std::{sync::Arc, thread};
 extern crate sdl3;
 use sdl3::event::{Event, WindowEvent};
 
+use crate::user_input::MovementHandler;
+
 // binds everything together
 #[path = "1engine.rs"]
 mod engine;
@@ -81,6 +83,8 @@ impl SdlHandle {
       .metal_view()
       .build()?;
 
+    sdl_context.mouse().set_relative_mouse_mode(&window, true);
+
     let window = Arc::new(window);
 
     let event_pump = sdl_context.event_pump()?;
@@ -91,29 +95,6 @@ impl SdlHandle {
       event_pump,
     })
   }
-}
-
-pub async fn run_engine() -> anyhow::Result<()> {
-  let mut sdl_handle = SdlHandle::new()?;
-  let mut engine = engine::Engine::new(sdl_handle.sdl_window.clone()).await;
-
-  sdl_handle
-    .sdl_context
-    .mouse()
-    .set_relative_mouse_mode(&sdl_handle.sdl_window, true);
-
-  while engine.is_running() {
-    for event in sdl_handle.event_pump.poll_event().iter() {
-      handle_system_events(event, &mut sdl_handle, &mut engine);
-      engine.user_input.poll_movement(event);
-    }
-
-    // TODO: wait for all keyboard related tasks to finish, THEN render
-    on_redraw(&mut engine);
-    thread::sleep(engine.tickrate.get_sleep_time());
-  }
-
-  Ok(())
 }
 
 fn handle_system_events(
@@ -134,4 +115,29 @@ fn handle_system_events(
     }
     _ => {}
   }
+}
+
+pub async fn run_engine() -> anyhow::Result<()> {
+  let mut sdl_handle = SdlHandle::new()?;
+  let mut engine = engine::Engine::new(&sdl_handle, sdl_handle.sdl_window.clone()).await;
+
+  let mut movement_buffer = vec![];
+  
+  while engine.is_running() {
+
+    movement_buffer.clear();
+
+    for event in sdl_handle.event_pump.poll_event().iter() {
+      handle_system_events(event, &mut sdl_handle, &mut engine);
+      MovementHandler::poll_movement(&mut movement_buffer, &mut engine, event);
+    }
+
+    MovementHandler::apply_movement(&mut engine, &mut movement_buffer);    
+
+    // TODO: wait for all keyboard related tasks to finish, THEN render
+    on_redraw(&mut engine);
+    thread::sleep(engine.tickrate.get_sleep_time());
+  }
+
+  Ok(())
 }

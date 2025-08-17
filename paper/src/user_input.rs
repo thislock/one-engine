@@ -1,7 +1,9 @@
+use std::sync::Arc;
+
 use sdl3::keyboard::Keycode;
 
 use crate::{
-  maths::{self, Angle},
+  engine::Engine, maths::{self, Angle}, SdlHandle
 };
 
 type InputFunction = Box<dyn Fn(&mut Vec<InputType>) -> ()>;
@@ -37,8 +39,9 @@ pub enum InputType {
 }
 
 pub struct MovementHandler {
-  unread_movement: Vec<InputType>,
   input_wrappers: Vec<InputWrapper>,
+  mouse_util: sdl3::mouse::MouseUtil,
+  window: Arc<sdl3::video::Window>,
 }
 
 fn add_scalar(input: &mut Vec<InputType>, rot_degrees: f64, magnitude: f64) {
@@ -51,10 +54,11 @@ fn add_scalar(input: &mut Vec<InputType>, rot_degrees: f64, magnitude: f64) {
 }
 
 impl MovementHandler {
-  pub fn new() -> Self {
+  pub fn new(sdl_context: &SdlHandle, window: Arc<sdl3::video::Window>) -> Self {
     Self {
-      unread_movement: vec![],
       input_wrappers: Self::get_input(),
+      mouse_util: sdl3::Sdl::mouse(&sdl_context.sdl_context),
+      window,
     }
   }
 
@@ -80,47 +84,81 @@ impl MovementHandler {
     ];
   }
 
-  pub fn poll_movement(&mut self, event: &sdl3::event::Event) {
-
-    self.unread_movement.clear();
+  pub fn poll_movement(unread_movement: &mut Vec<InputType>, engine: &mut Engine, event: &sdl3::event::Event) {
 
     match event {
       sdl3::event::Event::KeyDown { keycode, .. } => {
         if let Some(key) = keycode {
-          self.set_keys(key, true);
+          engine.user_input.set_keys(key, true);
         }
       }
       sdl3::event::Event::KeyUp { keycode, .. } => {
         if let Some(key) = keycode {
-          self.set_keys(key, false);
+          engine.user_input.set_keys(key, false);
         }
       }
 
-      sdl3::event::Event::MouseMotion { xrel, yrel, .. } => {
-        
-        let x = *xrel;
-        let y = *yrel;
-
-        let magnitude = (x.powf(2.0) + y.powf(2.0)).sqrt() as f64;
-        let rot = maths::Angle::from_radians((y.atan2(x)) as f64);
-        
-        let scalar = maths::Scalar::new(magnitude, rot);
-
-        self
-          .unread_movement
-          .push(InputType::RotateCamera(MovementDirection {
-            direction: scalar,
-          }));
+      sdl3::event::Event::MouseMotion { x, y, .. } => {
+        engine.user_input.calculate_mouse_delta(unread_movement, *x, *y);
       }
 
       _ => {}
     }
 
-    for wrapper in self.input_wrappers.iter() {
+    for wrapper in engine.user_input.input_wrappers.iter() {
       if wrapper.is_pressed {
-        wrapper.run_logic(&mut self.unread_movement);
+        wrapper.run_logic(unread_movement);
       }
     }
+
+  }
+
+  pub fn apply_movement(engine: &mut Engine, unread_movement: &mut Vec<InputType>) {
+    
+    let mut move_cam = (0.0, 0.0);
+    let mut rot_cam = (0.0, 0.0);
+    
+    for unread in unread_movement {
+      match unread {
+        InputType::MoveCamera(dir) => {
+          move_cam.0 += dir.direction.magnitude;
+          move_cam.1 += dir.direction.angle.as_radians();
+        }
+        InputType::RotateCamera(dir) => {
+          rot_cam.0 += dir.direction.magnitude;
+          rot_cam.1 += dir.direction.angle.as_radians();
+        }
+      }
+    }
+
+    let move_cam = InputType::MoveCamera(   MovementDirection {direction: maths::Scalar::new(move_cam.0, maths::Angle::from_radians(move_cam.1))});
+    let rot_cam =  InputType::RotateCamera( MovementDirection {direction: maths::Scalar::new(rot_cam.0, maths::Angle::from_radians(rot_cam.1))});
+    let movement = vec![move_cam, rot_cam];
+
+    engine.camera.update_camera(movement, engine.tickrate.get_delta());
+  }
+
+  pub fn calculate_mouse_delta(&mut self, unread_movement: &mut Vec<InputType>, x: f32, y: f32) {
+    let window_size = self.window.size();
+    let reset_pos = (window_size.0 / 2, window_size.1 / 2);
+    let sensitivity = 0.5;
+  
+    let x = (x - reset_pos.0 as f32) as f64 * sensitivity;
+    let y = (y - reset_pos.1 as f32) as f64 * sensitivity;
+
+    let magnitude = (x*x + y*y).sqrt() as f64;
+    let rot = maths::Angle::from_radians((y.atan2(x)) as f64);
+
+    let scalar = maths::Scalar::new(magnitude, rot);
+
+    unread_movement
+      .push(InputType::RotateCamera(MovementDirection {
+        direction: scalar,
+      }));
+
+    self
+      .mouse_util
+      .warp_mouse_in_window(&self.window, reset_pos.0 as f32, reset_pos.1 as f32);
   }
 
   fn set_keys(&mut self, key: &Keycode, pressed: bool) {
@@ -131,7 +169,4 @@ impl MovementHandler {
     }
   }
 
-  pub fn get_movement<'a>(&'a self) -> Vec<&'a InputType> {
-    return self.unread_movement.iter().collect();
-  }
 }

@@ -11,7 +11,7 @@ use crate::{
   gpu_texture::{self, DynamicTexture},
   render, task_lib,
   tasks::{self, LoopGroup},
-  tickrate, translate_surface, user_input,
+  tickrate, translate_surface, user_input, SdlHandle,
 };
 
 pub struct Engine {
@@ -39,7 +39,7 @@ pub struct Engine {
 }
 
 impl Engine {
-  async fn new_closed(window: Arc<sdl3::video::Window>) -> Self {
+  async fn new_closed(sdl_handle: &SdlHandle, window: Arc<sdl3::video::Window>) -> Self {
     let mut data_bindgroups = gpu_bindgroups::BindGroups::new();
     let drivers = device_drivers::Drivers::new(window.clone()).await;
     let render_task = render::RenderTask::new(&drivers).expect("failed to load rendertask");
@@ -62,7 +62,7 @@ impl Engine {
     let task_service = tasks::TaskService::new(translate_surface::SyncWindow(window.clone()));
     let tickrate = tickrate::Tickrate::new();
 
-    let user_input = user_input::MovementHandler::new();
+    let user_input = user_input::MovementHandler::new(sdl_handle, window.clone());
 
     Self {
       render_task,
@@ -84,8 +84,8 @@ impl Engine {
     }
   }
 
-  pub async fn new(window: Arc<sdl3::video::Window>) -> Self {
-    let mut engine = Self::new_closed(window).await;
+  pub async fn new(sdl_handle: &SdlHandle, window: Arc<sdl3::video::Window>) -> Self {
+    let mut engine = Self::new_closed(sdl_handle, window).await;
 
     task_lib::init_tasks(&mut engine);
 
@@ -115,9 +115,6 @@ impl Engine {
   // **************************************** //
 
   pub fn update(&mut self) {
-    self
-      .camera
-      .update_camera(self.user_input.get_movement(), self.tickrate.get_delta());
     self
       .camera
       .camera_uniform

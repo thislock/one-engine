@@ -66,7 +66,7 @@ impl Camera {
     .normalize()
   }
 
-  pub fn update_camera(&mut self, movement: Vec<&InputType>, speed: f32) {
+  pub fn update_camera(&mut self, movement: Vec<InputType>, speed: f32) {
     use cgmath::{vec3, InnerSpace};
 
     // Clamp pitch to avoid flipping (about ±85°)
@@ -89,12 +89,11 @@ impl Camera {
         }
 
         InputType::RotateCamera(dir) => {
-
           const SENSITIVITY: f64 = 0.1;
 
           let dx = dir.direction.magnitude * dir.direction.angle.as_radians().cos();
           let dy = dir.direction.magnitude * dir.direction.angle.as_radians().sin();
-          self.yaw_radians   += (dx * SENSITIVITY) as f32 * speed;
+          self.yaw_radians += (dx * SENSITIVITY) as f32 * speed;
           self.pitch_radians -= (dy * SENSITIVITY) as f32 * speed;
         }
       }
@@ -178,9 +177,7 @@ impl GpuCamera {
     }
   }
 
-  pub fn update_camera(&mut self, movement: Vec<&InputType>, delta: f32) {
-    self
-      .camera
-      .update_camera(movement, delta);
+  pub fn update_camera(&mut self, movement: Vec<InputType>, delta: f32) {
+    self.camera.update_camera(movement, delta);
   }
 }
