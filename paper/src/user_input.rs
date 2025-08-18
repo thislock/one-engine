@@ -78,7 +78,7 @@ impl MovementHandler {
   }
 
   fn get_input() -> Vec<InputWrapper> {
-    const CAMERA_SPEED: f64 = 0.1;
+    const CAMERA_SPEED: f64 = 0.05;
     return vec![
       InputWrapper::new(
         Keycode::W,
