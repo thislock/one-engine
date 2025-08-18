@@ -60,7 +60,7 @@ fn on_redraw(engine: &mut engine::Engine) {
     }
   }
 
-  engine.tickrate.tick();
+
 }
 
 #[allow(unused)]
@@ -131,12 +131,12 @@ pub async fn run_engine() -> anyhow::Result<()> {
       handle_system_events(&event, &mut sys_window, &mut engine);
       MovementHandler::poll_movement(&mut engine, &mut movement_buffer, &event);
     }
-
     MovementHandler::apply_movement(&mut engine, &mut movement_buffer);
 
     // TODO: wait for all keyboard related tasks to finish, THEN render
     on_redraw(&mut engine);
-    thread::sleep(engine.tickrate.get_sleep_time());
+    engine.tickrate.tick();
+    engine.tickrate.sleep_until_next_frame();
   }
 
   Ok(())

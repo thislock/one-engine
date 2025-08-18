@@ -52,7 +52,14 @@ pub struct MovementHandler {
   window: Arc<sdl3::video::Window>,
 }
 
+const BLANK_SCALAR: maths::Scalar = maths::Scalar::new(0.0, Angle::from_degrees(0.0));
+
 fn add_scalar(input: &mut Vec<InputType>, rot_degrees: f64, magnitude: f64) {
+  
+  if BLANK_SCALAR.angle.as_degrees() == rot_degrees && BLANK_SCALAR.magnitude == magnitude {
+    return;
+  }
+
   input.push(InputType::MoveCamera(MovementDirection {
     direction: maths::Scalar {
       magnitude,
@@ -71,7 +78,7 @@ impl MovementHandler {
   }
 
   fn get_input() -> Vec<InputWrapper> {
-    const CAMERA_SPEED: f64 = 1.0;
+    const CAMERA_SPEED: f64 = 0.1;
     return vec![
       InputWrapper::new(
         Keycode::W,
@@ -118,44 +125,19 @@ impl MovementHandler {
       _ => {}
     }
 
+  }
+
+  pub fn apply_movement(engine: &mut Engine, unread_movement: &mut Vec<InputType>) {
+    // loop through all the movement handlers and run them if they are active
     for wrapper in engine.user_input.input_wrappers.iter() {
       if wrapper.is_pressed {
         wrapper.run_logic(unread_movement);
       }
     }
-  }
 
-  pub fn apply_movement(engine: &mut Engine, unread_movement: &mut Vec<InputType>) {
-    let mut move_cam = (0.0, Angle::from_degrees(0.0));
-    let mut rot_cam = (0.0, 0.0);
-
-    for unread in unread_movement {
-      match unread {
-        InputType::MoveCamera(dir) => {
-          move_cam.0 += dir.direction.magnitude;
-          move_cam.1 += dir.direction.angle;
-        }
-        InputType::RotateCamera(dir) => {
-          rot_cam.0 += dir.pitch;
-          rot_cam.1 += dir.yaw;
-        }
-      }
-    }
-
-    let from_raw = |raw: (f64, Angle)| {
-      return MovementDirection {
-        direction: maths::Scalar::new(raw.0, raw.1),
-      };
-    };
-    
-    let move_cam = InputType::MoveCamera(from_raw(move_cam));
-    let rot_cam = InputType::RotateCamera(RotationDirection { pitch: rot_cam.0, yaw: rot_cam.1 });
-    
-    let movement = vec![move_cam, rot_cam];
-    
     engine
       .camera
-      .update_camera(movement, engine.tickrate.get_delta());
+      .update_camera(&unread_movement, engine.tickrate.get_delta());
   }
 
   pub fn calculate_mouse_delta(&mut self, unread_movement: &mut Vec<InputType>, x: f32, y: f32) {
@@ -179,9 +161,11 @@ impl MovementHandler {
 
   fn set_keys(&mut self, key: &Keycode, pressed: bool) {
     for wrapper in &mut self.input_wrappers {
+      // check if its the correct key
       if wrapper.keycode == *key {
         wrapper.is_pressed = pressed;
       }
+
     }
   }
 }

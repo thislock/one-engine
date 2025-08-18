@@ -66,7 +66,7 @@ impl Camera {
     .normalize()
   }
 
-  pub fn update_camera(&mut self, movement: Vec<InputType>, speed: f32) {
+  pub fn update_camera(&mut self, movement: &Vec<InputType>, speed: f32) {
     use cgmath::{vec3, InnerSpace};
 
     for input in movement {
@@ -126,7 +126,6 @@ pub struct GpuCamera {
   pub camera_buffer: wgpu::Buffer,
   pub camera_bind_group: wgpu::BindGroup,
   pub camera_bind_group_layout: wgpu::BindGroupLayout,
-  pub const_speed: f32,
 }
 
 impl GpuCamera {
@@ -172,11 +171,10 @@ impl GpuCamera {
       camera_buffer,
       camera_bind_group,
       camera_bind_group_layout,
-      const_speed: 2.2,
     }
   }
 
-  pub fn update_camera(&mut self, movement: Vec<InputType>, delta: f32) {
+  pub fn update_camera(&mut self, movement: &Vec<InputType>, delta: f32) {
     self.camera.update_camera(movement, delta);
   }
 }

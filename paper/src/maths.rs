@@ -18,7 +18,7 @@ impl Angle {
 
   /// Create from degrees
   #[inline]
-  pub fn from_degrees(deg: f64) -> Self {
+  pub const fn from_degrees(deg: f64) -> Self {
     Self {
       radians: deg.to_radians(),
     }
@@ -69,7 +69,7 @@ impl Angle {
   }
 
   #[inline]
-  fn normalized(&self) -> Self {
+  const fn normalized(&self) -> Self {
     let mut rad = self.radians % std::f64::consts::TAU;
     if rad < 0.0 {
       rad += std::f64::consts::TAU;
@@ -82,35 +82,14 @@ impl Add for Angle {
   type Output = Self;
 
   fn add(self, rhs: Self) -> Self::Output {
-    Angle::from_radians(self.radians + rhs.radians)
+    let two_pi = std::f64::consts::TAU; // 2π
+    Self::from_radians((self.radians + rhs.radians).rem_euclid(two_pi))
   }
 }
 
 impl AddAssign for Angle {
   fn add_assign(&mut self, rhs: Self) {
-    self.radians += rhs.radians;
-  }
-}
-
-impl Sub for Angle {
-  type Output = Self;
-
-  fn sub(self, rhs: Self) -> Self::Output {
-    Angle::from_radians(self.radians - rhs.radians)
-  }
-}
-
-impl SubAssign for Angle {
-  fn sub_assign(&mut self, rhs: Self) {
-    self.radians -= rhs.radians;
-  }
-}
-
-impl Neg for Angle {
-  type Output = Self;
-
-  fn neg(self) -> Self::Output {
-    Angle::from_radians(-self.radians)
+    *self = *self + rhs;
   }
 }
 
@@ -123,7 +102,7 @@ pub struct Scalar {
 #[allow(unused)]
 impl Scalar {
   /// Creates a new scalar with magnitude and angle (in radians)
-  pub fn new(magnitude: f64, angle: Angle) -> Self {
+  pub const fn new(magnitude: f64, angle: Angle) -> Self {
     Self { magnitude, angle }
   }
 
@@ -151,7 +130,7 @@ impl Scalar {
   }
 }
 
-use std::ops::{Add, AddAssign, Div, Mul, Neg, Sub, SubAssign};
+use std::ops::{Add, AddAssign, Div, Mul, Sub};
 
 impl Add for Scalar {
   type Output = Self;
