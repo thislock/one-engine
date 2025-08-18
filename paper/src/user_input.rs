@@ -52,14 +52,7 @@ pub struct MovementHandler {
   window: Arc<sdl3::video::Window>,
 }
 
-const BLANK_SCALAR: maths::Scalar = maths::Scalar::new(0.0, Angle::from_degrees(0.0));
-
 fn add_scalar(input: &mut Vec<InputType>, rot_degrees: f64, magnitude: f64) {
-  
-  if BLANK_SCALAR.angle.as_degrees() == rot_degrees && BLANK_SCALAR.magnitude == magnitude {
-    return;
-  }
-
   input.push(InputType::MoveCamera(MovementDirection {
     direction: maths::Scalar {
       magnitude,
@@ -78,7 +71,7 @@ impl MovementHandler {
   }
 
   fn get_input() -> Vec<InputWrapper> {
-    const CAMERA_SPEED: f64 = 0.05;
+    const CAMERA_SPEED: f64 = 2.0;
     return vec![
       InputWrapper::new(
         Keycode::W,
@@ -140,7 +133,7 @@ impl MovementHandler {
       .update_camera(&unread_movement, engine.tickrate.get_delta());
   }
 
-  pub fn calculate_mouse_delta(&mut self, unread_movement: &mut Vec<InputType>, x: f32, y: f32) {
+  fn calculate_mouse_delta(&mut self, unread_movement: &mut Vec<InputType>, x: f32, y: f32) {
     let window_size = self.window.size();
     let reset_pos = (window_size.0 / 2, window_size.1 / 2);
     let sensitivity = 2.0;
