@@ -30,7 +30,7 @@ impl Tickrate {
   }
 
   pub fn sleep_until_next_frame(&self) {
-    if self.wait_time == 0.0 {
+    if self.wait_time != 0.0 {
       thread::sleep(time::Duration::from_secs_f64(self.wait_time));
     }
   }
