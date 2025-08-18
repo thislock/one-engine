@@ -50,6 +50,7 @@ pub struct MovementHandler {
   input_wrappers: Vec<InputWrapper>,
   mouse_util: sdl3::mouse::MouseUtil,
   window: Arc<sdl3::video::Window>,
+  mouse_sensitivity: f64,
 }
 
 fn add_scalar(input: &mut Vec<InputType>, rot_degrees: f64, magnitude: f64) {
@@ -67,6 +68,7 @@ impl MovementHandler {
       input_wrappers: Self::get_input(),
       mouse_util: sdl3::Sdl::mouse(&sdl_context.sdl_context),
       window,
+      mouse_sensitivity: 50.0,
     }
   }
 
@@ -112,7 +114,7 @@ impl MovementHandler {
       sdl3::event::Event::MouseMotion { x, y, .. } => {
         engine
           .user_input
-          .calculate_mouse_delta(unread_movement, *x, *y);
+          .calculate_mouse_delta(unread_movement, *x, *y, engine.tickrate.get_delta());
       }
 
       _ => {}
@@ -133,10 +135,15 @@ impl MovementHandler {
       .update_camera(&unread_movement, engine.tickrate.get_delta());
   }
 
-  fn calculate_mouse_delta(&mut self, unread_movement: &mut Vec<InputType>, x: f32, y: f32) {
+  #[allow(unused)]
+  pub fn set_mouse_sensitivity(&mut self, new_sensitivity: f64) {
+    self.mouse_sensitivity = new_sensitivity;
+  }
+
+  fn calculate_mouse_delta(&mut self, unread_movement: &mut Vec<InputType>, x: f32, y: f32, delta_time: f32) {
     let window_size = self.window.size();
     let reset_pos = (window_size.0 / 2, window_size.1 / 2);
-    let sensitivity = 2.0;
+    let sensitivity = self.mouse_sensitivity * delta_time as f64;
 
     let x = (x - reset_pos.0 as f32) as f64 * sensitivity;
     let y = (y - reset_pos.1 as f32) as f64 * sensitivity;
