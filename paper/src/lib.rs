@@ -34,6 +34,7 @@ mod object;
 mod render;
 mod tasks;
 
+mod files;
 mod gpu_bindgroups;
 mod gpu_pipeline;
 
@@ -59,8 +60,6 @@ fn on_redraw(engine: &mut engine::Engine) {
       paper_error::log_error("Unable to render", e.into());
     }
   }
-
-
 }
 
 #[allow(unused)]

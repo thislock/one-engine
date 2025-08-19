@@ -1,5 +1,5 @@
 use crate::{
-  device_drivers, engine,
+  device_drivers, engine, files,
   gpu_geometry::{self, Vertex},
   gpu_texture, instances,
 };
@@ -10,11 +10,29 @@ pub struct RenderTask {
 }
 
 impl RenderTask {
+  pub fn render(&self, engine: &engine::Engine) -> std::result::Result<(), wgpu::SurfaceError> {
+    let output = engine.drivers.surface.get_current_texture()?;
+    let mut encoder = self.init_encoder(&engine.drivers);
+    let render_pass = self.init_render_pass(&output, &mut encoder, &engine.texture_bundle);
+
+    // tell the gpu what buffers to render
+    self.render_buffers(render_pass, &engine);
+
+    engine
+      .render_task
+      .finish_rendering(output, encoder, &engine.drivers);
+
+    Ok(())
+  }
+
   pub fn new(drivers: &device_drivers::Drivers) -> anyhow::Result<Self> {
     // texture system
     let mut texture_bundle = gpu_texture::TextureBundle::new(drivers)?;
 
-    texture_bundle.add_texture(drivers, include_bytes!("assets/yees.png"), "yees")?;
+    {
+      let asset_bytes = files::load_image_bytes("yees.png")?;
+      texture_bundle.add_texture(drivers, &asset_bytes, "yes")?;
+    }
 
     // rendering stuff
     let create_vertex = |pos: [f32; 3], tex_coords: [f32; 2]| -> Vertex {
@@ -71,21 +89,6 @@ impl RenderTask {
     Ok(Self { mesh })
   }
 
-  pub fn render(&self, engine: &engine::Engine) -> std::result::Result<(), wgpu::SurfaceError> {
-    let output = engine.drivers.surface.get_current_texture()?;
-    let mut encoder = self.init_encoder(&engine.drivers);
-    let render_pass = self.init_render_pass(&output, &mut encoder, &engine.texture_bundle);
-
-    // tell the gpu what buffers to render
-    self.render_buffers(render_pass, &engine);
-
-    engine
-      .render_task
-      .finish_rendering(output, encoder, &engine.drivers);
-
-    Ok(())
-  }
-
   fn render_buffers(&self, mut render_pass: RenderPass<'_>, engine: &engine::Engine) {
     // da boss (no touchy)
     render_pass.set_pipeline(&engine.data_pipeline.render_pipeline);
@@ -99,7 +102,8 @@ impl RenderTask {
     encoder: wgpu::CommandEncoder,
     drivers: &device_drivers::Drivers,
   ) {
-    drivers.queue.submit(iter::once(encoder.finish()));
+    let command_buffer = encoder.finish();
+    drivers.queue.submit(iter::once(command_buffer));
     output.present();
   }
 

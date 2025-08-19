@@ -1,4 +1,7 @@
-use std::{thread, time::{self, Instant}};
+use std::{
+  thread,
+  time::{self, Instant},
+};
 
 #[allow(unused)]
 pub struct Tickrate {
@@ -16,7 +19,7 @@ impl Tickrate {
       last_tick: Instant::now(),
       start_time: Instant::now(),
       delta_time: 0.0,
-      target_framerate: 60,
+      target_framerate: 144,
       wait_time: 0.0,
     }
   }
@@ -38,13 +41,12 @@ impl Tickrate {
   /// will record the time it takes for the frame to run
   /// ONLY ONE ONCE PER FRAME AT THE VERY END OF CALCULATIONS, then sleep
   pub fn tick(&mut self) {
-
     let render_time = Instant::now().duration_since(self.last_tick).as_secs_f64();
     // if rendering is shorter than the target framerate
     if render_time < self.target_frame_time() {
       self.wait_time = self.target_frame_time() - render_time;
       self.delta_time = self.target_frame_time();
-    } 
+    }
     // otherwise, the frame took too long to compute, set it directly, and skip waiting at the end of the frame.
     else {
       self.delta_time = render_time;

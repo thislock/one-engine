@@ -129,6 +129,7 @@ impl ImageTexture {
       mipmap_filter: wgpu::FilterMode::Nearest,
       ..Default::default()
     });
+
     let diffuse_bind_group = drivers
       .device
       .create_bind_group(&wgpu::BindGroupDescriptor {
@@ -171,11 +172,12 @@ impl TextureBundle {
     if self.image_textures.contains_key(&label) {
       return &self.image_textures.get(&label).unwrap().diffuse_bind_group;
     } else {
+      println!("failed to find: {}", label);
       return &self.fallback_texture.diffuse_bind_group;
     }
   }
 
-  pub fn new(drivers: &Drivers) -> anyhow::Result<Self> {
+  fn init_texure_bindgroup_layout(drivers: &Drivers) -> BindGroupLayout {
     let texture_bind_group_layout =
       drivers
         .device
@@ -200,7 +202,13 @@ impl TextureBundle {
           ],
           label: Some("texture_bind_group_layout"),
         });
+    texture_bind_group_layout
+  }
 
+  fn init_fallback_texture(
+    drivers: &Drivers,
+    texture_bind_group_layout: &BindGroupLayout,
+  ) -> Result<ImageTexture, Error> {
     // hard coded for stability
     use crate::missing_texture::*;
     let tex_data: image::RgbaImage = image::ImageBuffer::from_raw(
@@ -210,11 +218,17 @@ impl TextureBundle {
     )
     .expect("FATAL ERROR, PUT BACK THE HARDCODED FALLBACK TEXTURE, BOZO");
     let fallback_texture = ImageTexture::from_image(
-      &texture_bind_group_layout,
+      texture_bind_group_layout,
       &drivers,
       &image::DynamicImage::from(tex_data),
       Some("Fallback Texture"),
     )?;
+    Ok(fallback_texture)
+  }
+
+  pub fn new(drivers: &Drivers) -> anyhow::Result<Self> {
+    let texture_bind_group_layout = Self::init_texure_bindgroup_layout(drivers);
+    let fallback_texture = Self::init_fallback_texture(drivers, &texture_bind_group_layout)?;
 
     // dynamic textures
     let depth_buffer = DynamicTexture::create_depth_buffer(drivers);

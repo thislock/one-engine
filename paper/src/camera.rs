@@ -1,7 +1,7 @@
 use cgmath::{InnerSpace, Vector3};
 use wgpu::util::DeviceExt;
 
-use crate::{maths, user_input::InputType};
+use crate::{maths, object, user_input::InputType};
 #[allow(unused)]
 use crate::{
   camera, camera_uniform_buffer,
@@ -28,6 +28,10 @@ pub struct Camera {
   pub zfar: f32,
 }
 
+fn get_aspect_from_u32(aspect_ratio: (u32, u32)) -> f32 {
+  ((aspect_ratio.0 as f64) / (aspect_ratio.1 as f64)) as f32
+}
+
 impl Camera {
   pub fn new(position: cgmath::Point3<f32>, fov_degrees: f32, aspect_ratio: (u32, u32)) -> Self {
     Self {
@@ -35,26 +39,29 @@ impl Camera {
       fov_degrees,
       yaw_radians: 0.0,
       pitch_radians: 0.0,
-      aspect: (aspect_ratio.0 as f32) / (aspect_ratio.1 as f32),
+      aspect: get_aspect_from_u32(aspect_ratio),
       znear: 0.001,
       zfar: 100.0,
     }
   }
 
-  pub fn build_view_projection_matrix(&self) -> cgmath::Matrix4<f32> {
-    let forward = self.forward_vector();
-    let target = self.position + forward;
-    let up = cgmath::Vector3::new(0.0, 1.0, 0.0);
-
-    let view = cgmath::Matrix4::look_at_rh(self.position, target, up);
-    let proj = cgmath::perspective(
+  fn get_view_projection(&self) -> cgmath::Matrix4<f32> {
+    cgmath::perspective(
       cgmath::Deg(self.fov_degrees),
       self.aspect,
       self.znear,
       self.zfar,
-    );
+    )
+  }
 
-    proj * view
+  pub fn build_view_projection_matrix(&self) -> cgmath::Matrix4<f32> {
+    let forward = self.forward_vector();
+    let target = self.position + forward;
+
+    let view = cgmath::Matrix4::look_at_rh(self.position, target, object::WORLD_UP);
+    let view_projection = self.get_view_projection();
+
+    return view_projection * view;
   }
 
   pub fn forward_vector(&self) -> Vector3<f32> {
@@ -97,31 +104,11 @@ impl Camera {
         }
       }
     }
-
-    // // Apply movement
-    // if is_forward_pressed {
-    //   self.position += forward * speed;
-    // }
-    // if is_backward_pressed {
-    //   self.position -= forward * speed;
-    // }
-    // if is_right_pressed {
-    //   self.position += right * speed;
-    // }
-    // if is_left_pressed {
-    //   self.position -= right * speed;
-    // }
-    // if is_up_pressed {
-    //   self.position += up * speed;
-    // }
-    // if is_down_pressed {
-    //   self.position -= up * speed;
-    // }
   }
 }
 
 pub struct GpuCamera {
-  pub camera: camera::Camera,
+  pub camera: Camera,
   pub camera_uniform: camera_uniform_buffer::CameraUniform,
   pub camera_buffer: wgpu::Buffer,
   pub camera_bind_group: wgpu::BindGroup,
@@ -176,5 +163,9 @@ impl GpuCamera {
 
   pub fn update_camera(&mut self, movement: &Vec<InputType>, delta: f32) {
     self.camera.update_camera(movement, delta);
+  }
+
+  pub fn set_aspect(&mut self, size: (u32, u32)) {
+    self.camera.aspect = get_aspect_from_u32(size);
   }
 }

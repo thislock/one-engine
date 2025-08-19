@@ -48,7 +48,7 @@ impl Engine {
 
     let cam = camera::GpuCamera::new(&drivers.device, window.size());
     let texture_bundle =
-      gpu_texture::TextureBundle::new(&drivers).expect("failed to load texture buffer");
+      gpu_texture::TextureBundle::new(&drivers).expect("failed to load texture bundle");
 
     let gpu_time = gpu_sync_data::create_time_bind_group(&drivers.device);
 
@@ -95,6 +95,7 @@ impl Engine {
   pub fn resize(&mut self, width: u32, height: u32) {
     if width > 0 && height > 0 {
       // resize window
+      self.camera.set_aspect((width, height));
       self.drivers.surface_config.width = width;
       self.drivers.surface_config.height = height;
       self
