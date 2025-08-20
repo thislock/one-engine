@@ -89,15 +89,17 @@ impl PipelineData {
     bindgroups: &raw_bindgroups::BindGroups,
     drivers: &device_drivers::Drivers,
   ) -> anyhow::Result<Self> {
+
+    use crate::files;
+    let shader = files::load_shader_str("sample.wgsl")?;
+
     let shader = drivers
       .device
       .create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("Shader"),
-        // TODO: CHANGE THIS SHIT
-        source: wgpu::ShaderSource::Wgsl(
-          include_str!("../../../assets/shaders/sample.wgsl").into(),
-        ),
+        source: wgpu::ShaderSource::Wgsl(shader.into()),
       });
+    
     let render_pipeline =
       Self::init_render_pipeline(&drivers.device, shader, &drivers.surface_config, bindgroups);
 

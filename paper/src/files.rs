@@ -10,8 +10,11 @@ pub enum FileType {
   Shader,
 }
 
-pub fn load_shader_bytes(filename: &str) -> io::Result<Vec<u8>> {
-  return load_file_bytes(FileType::Shader, filename);
+pub fn load_shader_str(filename: &str) -> io::Result<String> {
+  const ERR_MSG: &str = "failed to convert bytes into utf8 in load_shader function";
+  let shader_bytes = load_file_bytes(FileType::Shader, filename)?;
+  let shader_str = String::from_utf8(shader_bytes).expect(ERR_MSG);
+  return Ok(shader_str);
 }
 
 pub fn load_obj_bytes(filename: &str) -> io::Result<Vec<u8>> {
