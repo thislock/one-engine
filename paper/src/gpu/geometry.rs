@@ -2,7 +2,10 @@ use wgpu::{util::DeviceExt, RenderPass, VertexBufferLayout};
 
 use crate::{
   engine,
-  instances::{self, Instance},
+  gpu_layer::{
+    instances::{self, Instance},
+    texture,
+  },
 };
 
 pub trait VertexTrait {
@@ -83,23 +86,33 @@ impl MeshBuilder {
   }
 
   pub fn build(self, device: &wgpu::Device) -> anyhow::Result<Mesh> {
-    let texture_id = self.texture_id.clone().unwrap_or(String::from(""));
+    let texture_id = self.texture_id.clone().unwrap_or(String::from("yees"));
 
     let mut mesh = Mesh::new(self, device);
 
-    mesh.texture_id = texture_id;
+    mesh.material = texture_id;
 
     Ok(mesh)
   }
 }
 
+pub struct MaterialID(usize);
+
+pub struct Material {
+  pub id: MaterialID,
+  pub diffuse_texture: texture::ImageTexture,
+}
+
 pub struct Mesh {
+  // change this to use materials
+  material: String,
+
   vertex_buffer: wgpu::Buffer,
   index_buffer: wgpu::Buffer,
+  num_indicies: u32,
+
   instance_buffer: Option<wgpu::Buffer>,
   instances: Option<Vec<Instance>>,
-  num_indicies: u32,
-  texture_id: String,
 }
 
 impl Mesh {
@@ -154,7 +167,7 @@ impl Mesh {
       instance_buffer,
       instances: mesh_builder.instances,
       num_indicies: mesh_builder.indicies.len() as u32,
-      texture_id: String::from(""),
+      material: String::from(""),
     }
   }
 
@@ -168,9 +181,7 @@ impl Mesh {
 
     render_pass.set_bind_group(
       Self::TEXTURE_BINDGROUP,
-      engine
-        .texture_bundle
-        .get_diffuse_bind_group(&self.texture_id),
+      engine.texture_bundle.get_diffuse_bind_group(&self.material),
       &[],
     );
     render_pass.set_bind_group(

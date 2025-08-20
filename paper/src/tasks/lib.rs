@@ -1,7 +1,9 @@
 use crate::{
   engine::Engine,
-  tasks::{LoopGroup, Task},
+  task_lib::tasks::{LoopGroup, Task, TaskMessenger, TaskType},
 };
+
+pub mod tasks;
 
 #[derive(Debug, Clone)]
 #[allow(unused)]
@@ -21,12 +23,12 @@ fn pointlessly_complex_task(x: i32) -> i32 {
 }
 
 impl Task for BurnerTask {
-  fn get_type(&self) -> crate::tasks::TaskType {
-    crate::tasks::TaskType::Looping(self.loop_group.clone())
+  fn get_type(&self) -> TaskType {
+    TaskType::Looping(self.loop_group.clone())
   }
   fn run_task(
     &mut self,
-    _message: &mut crate::tasks::TaskMessenger,
+    _message: &mut TaskMessenger,
     // the time since the function was ran last
     delta_time: f32,
   ) -> anyhow::Result<()> {

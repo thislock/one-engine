@@ -1,4 +1,4 @@
-use crate::camera;
+use crate::gpu_layer::camera;
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]

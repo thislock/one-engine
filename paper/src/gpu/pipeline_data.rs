@@ -1,7 +1,7 @@
-use crate::{
-  device_drivers, gpu_bindgroups,
-  gpu_geometry::{self, VertexTrait},
-  gpu_texture, instances,
+use crate::gpu_layer::{
+  device_drivers,
+  geometry::{ModelVertex, VertexTrait},
+  instances, raw_bindgroups, texture,
 };
 
 pub struct PipelineData {
@@ -10,10 +10,7 @@ pub struct PipelineData {
 
 impl PipelineData {
   fn get_gpu_buffers() -> Vec<wgpu::VertexBufferLayout<'static>> {
-    vec![
-      gpu_geometry::ModelVertex::desc(),
-      instances::Instance::desc(),
-    ]
+    vec![ModelVertex::desc(), instances::Instance::desc()]
   }
 
   const VERTEX_SHADER_MAIN: &str = "vs_main";
@@ -23,7 +20,7 @@ impl PipelineData {
     device: &wgpu::Device,
     shader_module: wgpu::ShaderModule,
     surface_config: &wgpu::SurfaceConfiguration,
-    bindgroup_data: &gpu_bindgroups::BindGroups,
+    bindgroup_data: &raw_bindgroups::BindGroups,
   ) -> wgpu::RenderPipeline {
     let slice = &bindgroup_data.collect_slice();
     let render_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -69,7 +66,7 @@ impl PipelineData {
       },
 
       depth_stencil: Some(wgpu::DepthStencilState {
-        format: gpu_texture::DynamicTexture::DEPTH_BUFFER_FORMAT,
+        format: texture::DynamicTexture::DEPTH_BUFFER_FORMAT,
         depth_write_enabled: true,
         depth_compare: wgpu::CompareFunction::Less,
         stencil: wgpu::StencilState::default(),
@@ -87,16 +84,19 @@ impl PipelineData {
     });
     return render_pipeline;
   }
-  // TODO: learn how to refresh the render pipeline while the program is running.
+
   pub async fn new(
-    bindgroups: &gpu_bindgroups::BindGroups,
+    bindgroups: &raw_bindgroups::BindGroups,
     drivers: &device_drivers::Drivers,
   ) -> anyhow::Result<Self> {
     let shader = drivers
       .device
       .create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("Shader"),
-        source: wgpu::ShaderSource::Wgsl(include_str!("shader_code/sample.wgsl").into()),
+        // TODO: CHANGE THIS SHIT
+        source: wgpu::ShaderSource::Wgsl(
+          include_str!("../../../assets/shaders/sample.wgsl").into(),
+        ),
       });
     let render_pipeline =
       Self::init_render_pipeline(&drivers.device, shader, &drivers.surface_config, bindgroups);

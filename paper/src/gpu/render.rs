@@ -1,12 +1,12 @@
-use crate::{
-  device_drivers, engine, files,
-  gpu_geometry::{self, Vertex},
-  gpu_texture, instances,
-};
 use std::iter;
 use wgpu::RenderPass;
+
+use crate::{
+  engine, files,
+  gpu_layer::{device_drivers, geometry, instances, texture},
+};
 pub struct RenderTask {
-  pub mesh: gpu_geometry::Mesh,
+  pub mesh: geometry::Mesh,
 }
 
 impl RenderTask {
@@ -27,7 +27,7 @@ impl RenderTask {
 
   pub fn new(drivers: &device_drivers::Drivers) -> anyhow::Result<Self> {
     // texture system
-    let mut texture_bundle = gpu_texture::TextureBundle::new(drivers)?;
+    let mut texture_bundle = texture::TextureBundle::new(drivers)?;
 
     {
       let asset_bytes = files::load_image_bytes("yees.png")?;
@@ -35,14 +35,14 @@ impl RenderTask {
     }
 
     // rendering stuff
-    let create_vertex = |pos: [f32; 3], tex_coords: [f32; 2]| -> Vertex {
-      Box::new(gpu_geometry::ModelVertex {
+    let create_vertex = |pos: [f32; 3], tex_coords: [f32; 2]| -> geometry::Vertex {
+      Box::new(geometry::ModelVertex {
         pos,
         tex_coords,
         normal: [0.0; 3],
       })
     };
-    let vertices: Vec<Vertex> = vec![
+    let vertices: Vec<geometry::Vertex> = vec![
       create_vertex([-0.0868241, 0.49240386, 0.0], [0.4131759, 0.99240386]),
       create_vertex([-0.49513406, 0.06958647, 0.0], [0.0048659444, 0.56958647]),
       create_vertex([-0.21918549, -0.44939706, 0.0], [0.28081453, 0.05060294]),
@@ -82,7 +82,7 @@ impl RenderTask {
       })
       .collect::<Vec<_>>();
 
-    let mesh = gpu_geometry::MeshBuilder::new(vertices, indicies)
+    let mesh = geometry::MeshBuilder::new(vertices, indicies)
       .add_instances(instances)
       .build(&drivers.device)?;
 
@@ -119,7 +119,7 @@ impl RenderTask {
     &self,
     output: &wgpu::SurfaceTexture,
     encoder: &'a mut wgpu::CommandEncoder,
-    texture_bundle: &gpu_texture::TextureBundle,
+    texture_bundle: &texture::TextureBundle,
   ) -> RenderPass<'a> {
     let view = output
       .texture

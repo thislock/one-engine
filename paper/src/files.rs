@@ -7,6 +7,11 @@ const DEFAULT_PATH: &'static str = "./assets";
 pub enum FileType {
   Image,
   Obj,
+  Shader,
+}
+
+pub fn load_shader_bytes(filename: &str) -> io::Result<Vec<u8>> {
+  return load_file_bytes(FileType::Shader, filename);
 }
 
 pub fn load_obj_bytes(filename: &str) -> io::Result<Vec<u8>> {
@@ -45,6 +50,7 @@ fn get_file_path(filetype: FileType, filename: &str) -> String {
   match filetype {
     FileType::Image => add_directory(&mut path, "images"),
     FileType::Obj => add_directory(&mut path, "obj"),
+    FileType::Shader => add_directory(&mut path, "shaders"),
   }
   add_directory(&mut path, filename);
   path

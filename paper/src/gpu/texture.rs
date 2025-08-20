@@ -4,7 +4,7 @@ use anyhow::{Error, Ok};
 use image::GenericImageView;
 use wgpu::{BindGroup, BindGroupLayout};
 
-use crate::device_drivers::Drivers;
+use crate::gpu_layer::device_drivers::Drivers;
 
 pub struct DynamicTexture {
   #[allow(unused)]
@@ -210,17 +210,13 @@ impl TextureBundle {
     texture_bind_group_layout: &BindGroupLayout,
   ) -> Result<ImageTexture, Error> {
     // hard coded for stability
-    use crate::missing_texture::*;
-    let tex_data: image::RgbaImage = image::ImageBuffer::from_raw(
-      FALLBACK_TEXTURE_WIDTH,
-      FALLBACK_TEXTURE_HEIGHT,
-      FALLBACK_TEXTURE_DATA.to_vec(),
-    )
-    .expect("FATAL ERROR, PUT BACK THE HARDCODED FALLBACK TEXTURE, BOZO");
+    let texture_bytes = include_bytes!("./missing_texture.png");
+    let tex_data: image::DynamicImage = image::load_from_memory(texture_bytes)
+      .expect("FATAL ERROR, PUT BACK THE HARDCODED FALLBACK TEXTURE, BOZO");
     let fallback_texture = ImageTexture::from_image(
       texture_bind_group_layout,
       &drivers,
-      &image::DynamicImage::from(tex_data),
+      &tex_data,
       Some("Fallback Texture"),
     )?;
     Ok(fallback_texture)

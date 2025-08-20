@@ -1,4 +1,3 @@
-// sample vertex shader
 
 struct InstanceInput {
     @location(5) model_matrix_0: vec4<f32>,
@@ -16,6 +15,7 @@ var<uniform> camera: CameraUniform;
 struct GpuTime {
     time_secs: f32,
 };
+
 @group(2) @binding(0)
 var<uniform> time: GpuTime;
 

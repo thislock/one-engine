@@ -6,20 +6,26 @@ use std::{
 };
 
 use crate::{
-  camera, device_drivers, gpu_bindgroups, gpu_pipeline,
-  gpu_sync_data::{self, GpuTime},
-  gpu_texture::{self, DynamicTexture},
-  render, task_lib,
-  tasks::{self, LoopGroup},
-  tickrate, translate_surface, user_input, SdlHandle,
+  gpu_layer::{
+    camera, device_drivers,
+    pipeline_data::PipelineData,
+    raw_bindgroups, render,
+    sync_data::{self, GpuTime},
+    texture,
+  },
+  task_lib::{
+    self, init_tasks,
+    tasks::{self, LoopGroup},
+  },
+  window_layer::{sdl_handle::SdlHandle, tickrate, translate_surface, user_input},
 };
 
 pub struct Engine {
-  pub data_pipeline: gpu_pipeline::PipelineData,
+  pub data_pipeline: PipelineData,
 
   #[allow(unused)]
-  pub data_bindgroups: gpu_bindgroups::BindGroups,
-  pub texture_bundle: gpu_texture::TextureBundle,
+  pub data_bindgroups: raw_bindgroups::BindGroups,
+  pub texture_bundle: texture::TextureBundle,
 
   pub camera: camera::GpuCamera,
   pub drivers: device_drivers::Drivers,
@@ -39,8 +45,27 @@ pub struct Engine {
 }
 
 impl Engine {
+  pub fn redraw(&mut self) {
+    self.update();
+
+    // try and render crap
+    match self.render_task.render(&self) {
+      Ok(_) => {}
+
+      // reconfigure the surface if it's bad
+      Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
+        let size = self.get_window().0.size();
+        self.resize(size.0, size.1);
+      }
+
+      Err(error) => {
+        log::error!("Unable to render with message: {}", error);
+      }
+    }
+  }
+
   async fn new_closed(sdl_handle: &SdlHandle, window: Arc<sdl3::video::Window>) -> Self {
-    let mut data_bindgroups = gpu_bindgroups::BindGroups::new();
+    let mut data_bindgroups = raw_bindgroups::BindGroups::new();
     let drivers = device_drivers::Drivers::new(window.clone()).await;
     let render_task = render::RenderTask::new(&drivers).expect("failed to load rendertask");
 
@@ -48,17 +73,15 @@ impl Engine {
 
     let cam = camera::GpuCamera::new(&drivers.device, window.size());
     let texture_bundle =
-      gpu_texture::TextureBundle::new(&drivers).expect("failed to load texture bundle");
+      texture::TextureBundle::new(&drivers).expect("failed to load texture bundle");
 
-    let gpu_time = gpu_sync_data::create_time_bind_group(&drivers.device);
+    let gpu_time = sync_data::create_time_bind_group(&drivers.device);
 
     data_bindgroups.add_bind(texture_bundle.get_texture_bind_group().clone());
     data_bindgroups.add_bind(cam.camera_bind_group_layout.clone());
     data_bindgroups.add_bind(gpu_time.layout.clone());
 
-    let data_pipeline = gpu_pipeline::PipelineData::new(&data_bindgroups, &drivers)
-      .await
-      .unwrap();
+    let data_pipeline = PipelineData::new(&data_bindgroups, &drivers).await.unwrap();
     let task_service = tasks::TaskService::new(translate_surface::SyncWindow(window.clone()));
     let tickrate = tickrate::Tickrate::new();
 
@@ -87,7 +110,7 @@ impl Engine {
   pub async fn new(sdl_handle: &SdlHandle, window: Arc<sdl3::video::Window>) -> Self {
     let mut engine = Self::new_closed(sdl_handle, window).await;
 
-    task_lib::init_tasks(&mut engine);
+    init_tasks(&mut engine);
 
     return engine;
   }
@@ -103,7 +126,8 @@ impl Engine {
         .surface
         .configure(&self.drivers.device, &self.drivers.surface_config);
       // resize textures (make a new one)
-      self.texture_bundle.depth_buffer = DynamicTexture::create_depth_buffer(&self.drivers);
+      self.texture_bundle.depth_buffer =
+        texture::DynamicTexture::create_depth_buffer(&self.drivers);
     }
   }
 

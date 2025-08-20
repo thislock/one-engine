@@ -10,6 +10,8 @@ use std::{
   time::{Duration, Instant},
 };
 
+use crate::window_layer::translate_surface::SyncWindow;
+
 #[allow(unused)]
 pub struct TaskMessenger {
   pub sender: Sender<FromTask>,
@@ -62,10 +64,10 @@ fn spawn_loop_group(loop_epoch: Duration, rx: Receiver<Sender<ToTask>>) {
       // check for erros
       if errors.len() != 0 {
         for error in errors {
-          paper_error::log_error(FUCK, error.into());
+          log::error!("{FUCK}, {}", error);
         }
         alive = false;
-        paper_error::log("loop group closed after previous errors");
+        log::error!("loop group closed after previous errors");
       }
 
       // wait until the next frame
@@ -88,8 +90,6 @@ impl LoopGroup {
     Ok(())
   }
 }
-
-use crate::{paper_error, translate_surface::SyncWindow};
 
 #[derive(Debug)]
 #[allow(unused)]
@@ -261,7 +261,7 @@ fn spawn_task_master(
             TaskType::Looping(loop_group) => {
               let msg = loop_group.add_member(task.sender.clone());
               if let Err(err) = msg {
-                paper_error::log_error("fucking fuck fuck", err);
+                log::error!("fucking fuck fuck {}", err);
               }
             }
             // typically just called by other tasks

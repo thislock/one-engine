@@ -1,12 +1,10 @@
 use cgmath::{InnerSpace, Vector3};
 use wgpu::util::DeviceExt;
 
-use crate::{maths, object, user_input::InputType};
-#[allow(unused)]
 use crate::{
-  camera, camera_uniform_buffer,
-  tasks::{Task, TaskMessenger},
-  tickrate,
+  gpu_layer::{camera_uniform, object},
+  maths,
+  window_layer::user_input::InputType,
 };
 
 #[allow(unused)]
@@ -109,7 +107,7 @@ impl Camera {
 
 pub struct GpuCamera {
   pub camera: Camera,
-  pub camera_uniform: camera_uniform_buffer::CameraUniform,
+  pub camera_uniform: camera_uniform::CameraUniform,
   pub camera_buffer: wgpu::Buffer,
   pub camera_bind_group: wgpu::BindGroup,
   pub camera_bind_group_layout: wgpu::BindGroupLayout,
@@ -120,7 +118,7 @@ impl GpuCamera {
     let default_camera_position = cgmath::Point3::new(0.0, 3.0, 1.0);
     let camera = Camera::new(default_camera_position, 45.0, size);
 
-    let mut camera_uniform = camera_uniform_buffer::CameraUniform::new();
+    let mut camera_uniform = camera_uniform::CameraUniform::new();
     camera_uniform.update_view_proj(&camera);
 
     let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
