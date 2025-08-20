@@ -2,9 +2,9 @@ use cgmath::{InnerSpace, Vector3};
 use wgpu::util::DeviceExt;
 
 use crate::{
-  gpu_layer::{camera_uniform, object},
+  gpu::{camera_uniform, object},
   maths,
-  window_layer::user_input::InputType,
+  window::user_input::InputType,
 };
 
 #[allow(unused)]

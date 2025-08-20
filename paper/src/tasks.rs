@@ -1,6 +1,6 @@
 use crate::{
   engine::Engine,
-  task_lib::tasks::{LoopGroup, Task, TaskMessenger, TaskType},
+  tasks::tasks::{LoopGroup, Task, TaskMessenger, TaskType},
 };
 
 pub mod tasks;

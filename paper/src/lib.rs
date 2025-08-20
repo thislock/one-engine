@@ -2,7 +2,7 @@ use std::sync::Arc;
 extern crate sdl3;
 use sdl3::event::{Event, WindowEvent};
 
-use crate::window_layer::{sdl_handle::SdlHandle, user_input::MovementHandler};
+use crate::window::{sdl_handle::SdlHandle, user_input::MovementHandler};
 
 mod files;
 mod maths;
@@ -10,14 +10,9 @@ mod maths;
 #[path = "1engine.rs"]
 mod engine;
 
-#[path = "gpu/lib.rs"]
-mod gpu_layer;
-
-#[path = "window/lib.rs"]
-mod window_layer;
-
-#[path = "tasks/lib.rs"]
-mod task_lib;
+mod gpu;
+mod window;
+mod tasks;
 
 fn handle_system_events(
   event: &sdl3::event::Event,

@@ -6,18 +6,18 @@ use std::{
 };
 
 use crate::{
-  gpu_layer::{
+  gpu::{
     camera, device_drivers,
     pipeline_data::PipelineData,
     raw_bindgroups, render,
     sync_data::{self, GpuTime},
     texture,
   },
-  task_lib::{
-    self, init_tasks,
+  tasks::{
+    init_tasks,
     tasks::{self, LoopGroup},
   },
-  window_layer::{sdl_handle::SdlHandle, tickrate, translate_surface, user_input},
+  window::{sdl_handle::SdlHandle, tickrate, translate_surface, user_input},
 };
 
 pub struct Engine {

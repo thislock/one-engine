@@ -4,7 +4,7 @@ use anyhow::{Error, Ok};
 use image::GenericImageView;
 use wgpu::{BindGroup, BindGroupLayout};
 
-use crate::gpu_layer::device_drivers::Drivers;
+use crate::gpu::device_drivers::Drivers;
 
 pub struct DynamicTexture {
   #[allow(unused)]

@@ -1,4 +1,4 @@
-use crate::gpu_layer::{
+use crate::gpu::{
   device_drivers,
   geometry::{ModelVertex, VertexTrait},
   instances, raw_bindgroups, texture,

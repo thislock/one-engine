@@ -3,7 +3,7 @@ use wgpu::RenderPass;
 
 use crate::{
   engine, files,
-  gpu_layer::{device_drivers, geometry, instances, texture},
+  gpu::{device_drivers, geometry, instances, texture},
 };
 pub struct RenderTask {
   pub mesh: geometry::Mesh,

@@ -2,7 +2,7 @@ use wgpu::{util::DeviceExt, RenderPass, VertexBufferLayout};
 
 use crate::{
   engine,
-  gpu_layer::{
+  gpu::{
     instances::{self, Instance},
     texture,
   },
