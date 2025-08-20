@@ -172,7 +172,8 @@ impl TextureBundle {
     if self.image_textures.contains_key(&label) {
       return &self.image_textures.get(&label).unwrap().diffuse_bind_group;
     } else {
-      println!("failed to find: {}", label);
+      //println!("failed to find: {}", label);
+      //println!("out of {:?}", self.image_textures.keys());
       return &self.fallback_texture.diffuse_bind_group;
     }
   }
@@ -225,6 +226,7 @@ impl TextureBundle {
   pub fn new(drivers: &Drivers) -> anyhow::Result<Self> {
     let texture_bind_group_layout = Self::init_texure_bindgroup_layout(drivers);
     let fallback_texture = Self::init_fallback_texture(drivers, &texture_bind_group_layout)?;
+    println!("created new thingy");
 
     // dynamic textures
     let depth_buffer = DynamicTexture::create_depth_buffer(drivers);

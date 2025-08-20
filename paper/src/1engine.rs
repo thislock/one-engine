@@ -67,13 +67,14 @@ impl Engine {
   async fn new_closed(sdl_handle: &SdlHandle, window: Arc<sdl3::video::Window>) -> Self {
     let mut data_bindgroups = raw_bindgroups::BindGroups::new();
     let drivers = device_drivers::Drivers::new(window.clone()).await;
-    let render_task = render::RenderTask::new(&drivers).expect("failed to load rendertask");
+
+    let mut texture_bundle =
+      texture::TextureBundle::new(&drivers).expect("failed to load texture bundle");
+    let render_task = render::RenderTask::new(&drivers, &mut texture_bundle).expect("failed to load rendertask");
 
     let loop_group = LoopGroup::new(Duration::from_secs_f64(1.0));
 
     let cam = camera::GpuCamera::new(&drivers.device, window.size());
-    let texture_bundle =
-      texture::TextureBundle::new(&drivers).expect("failed to load texture bundle");
 
     let gpu_time = sync_data::create_time_bind_group(&drivers.device);
 

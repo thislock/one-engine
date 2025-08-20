@@ -25,13 +25,10 @@ impl RenderTask {
     Ok(())
   }
 
-  pub fn new(drivers: &device_drivers::Drivers) -> anyhow::Result<Self> {
-    // texture system
-    let mut texture_bundle = texture::TextureBundle::new(drivers)?;
-
+  pub fn new(drivers: &device_drivers::Drivers, texture_bundle: &mut texture::TextureBundle) -> anyhow::Result<Self> {
     {
       let asset_bytes = files::load_image_bytes("yees.png")?;
-      texture_bundle.add_texture(drivers, &asset_bytes, "yes")?;
+      texture_bundle.add_texture(drivers, &asset_bytes, "yees")?;
     }
 
     // rendering stuff
