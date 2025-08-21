@@ -100,6 +100,8 @@ impl PipelineData {
         source: wgpu::ShaderSource::Wgsl(shader.into()),
       });
     
+    println!("shader compiled with message: {:?}", shader.get_compilation_info().await.messages);
+    
     let render_pipeline =
       Self::init_render_pipeline(&drivers.device, shader, &drivers.surface_config, bindgroups);
 
