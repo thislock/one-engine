@@ -17,8 +17,11 @@ pub fn load_shader_str(filename: &str) -> io::Result<String> {
   return Ok(shader_str);
 }
 
-pub fn load_obj_bytes(filename: &str) -> io::Result<Vec<u8>> {
-  return load_file_bytes(FileType::Obj, filename);
+pub fn load_obj_str(filename: &str) -> io::Result<String> {
+  const ERR_MSG: &str = "failed to convert bytes into utf8 in load_obj function.";
+  let obj_bytes = load_file_bytes(FileType::Obj, filename)?;
+  let obj_str = String::from_utf8(obj_bytes).expect(ERR_MSG);
+  return Ok(obj_str);
 }
 
 pub fn load_image_bytes(filename: &str) -> io::Result<Vec<u8>> {
@@ -27,7 +30,6 @@ pub fn load_image_bytes(filename: &str) -> io::Result<Vec<u8>> {
 
 pub fn load_file_bytes(filetype: FileType, filename: &str) -> io::Result<Vec<u8>> {
   let path_str = get_file_path(filetype, filename);
-  println!("{path_str}");
   let path = Path::new(&path_str);
   ensure_directory_exists(path)?;
   return read_file_as_raw(path);

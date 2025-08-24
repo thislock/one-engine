@@ -1,3 +1,5 @@
+use crate::gpu::geometry::VertexTrait;
+
 pub struct Instance {
   pub pos: cgmath::Vector3<f32>,
   pub rot: cgmath::Quaternion<f32>,
@@ -9,8 +11,24 @@ impl Instance {
       model: (cgmath::Matrix4::from_translation(self.pos) * cgmath::Matrix4::from(self.rot)).into(),
     }
   }
+}
 
-  pub fn desc() -> wgpu::VertexBufferLayout<'static> {
+impl VertexTrait for Instance {
+  fn as_bytes(&self) -> Vec<u8> {
+    let mut bytes = vec![];
+    let floats = [
+      self.pos.x,
+      self.pos.y,
+      self.pos.z,
+      self.rot.s,
+      self.rot.v.x,
+      self.rot.v.y,
+      self.rot.v.z,
+    ];
+    return bytes;
+  }
+
+  fn desc() -> wgpu::VertexBufferLayout<'static> {
     use std::mem;
     wgpu::VertexBufferLayout {
       array_stride: mem::size_of::<InstanceRaw>() as wgpu::BufferAddress,

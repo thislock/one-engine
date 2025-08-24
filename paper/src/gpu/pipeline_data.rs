@@ -89,7 +89,6 @@ impl PipelineData {
     bindgroups: &raw_bindgroups::BindGroups,
     drivers: &device_drivers::Drivers,
   ) -> anyhow::Result<Self> {
-
     use crate::files;
     let shader = files::load_shader_str("sample.wgsl")?;
 
@@ -99,9 +98,12 @@ impl PipelineData {
         label: Some("Shader"),
         source: wgpu::ShaderSource::Wgsl(shader.into()),
       });
-    
-    println!("shader compiled with message: {:?}", shader.get_compilation_info().await.messages);
-    
+
+    println!(
+      "shader compiled with message: {:?}",
+      shader.get_compilation_info().await.messages
+    );
+
     let render_pipeline =
       Self::init_render_pipeline(&drivers.device, shader, &drivers.surface_config, bindgroups);
 

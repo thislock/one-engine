@@ -11,8 +11,8 @@ mod maths;
 mod engine;
 
 mod gpu;
-mod window;
 mod tasks;
+mod window;
 
 fn handle_system_events(
   event: &sdl3::event::Event,

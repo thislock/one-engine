@@ -90,22 +90,23 @@ impl MeshBuilder {
 
     let mut mesh = Mesh::new(self, device);
 
-    mesh.material = texture_id;
+    mesh.material = Material {
+      name: "".to_owned(),
+      diffuse_texture: texture_id,
+    };
 
     Ok(mesh)
   }
 }
 
-pub struct MaterialID(usize);
-
 pub struct Material {
-  pub id: MaterialID,
-  pub diffuse_texture: texture::ImageTexture,
+  pub name: String,
+  pub diffuse_texture: String,
 }
 
 pub struct Mesh {
   // change this to use materials
-  material: String,
+  material: Material,
 
   vertex_buffer: wgpu::Buffer,
   index_buffer: wgpu::Buffer,
@@ -167,7 +168,10 @@ impl Mesh {
       instance_buffer,
       instances: mesh_builder.instances,
       num_indicies: mesh_builder.indicies.len() as u32,
-      material: String::from(""),
+      material: Material {
+        name: "".to_owned(),
+        diffuse_texture: "".to_owned(),
+      },
     }
   }
 
@@ -181,7 +185,9 @@ impl Mesh {
 
     render_pass.set_bind_group(
       Self::TEXTURE_BINDGROUP,
-      engine.texture_bundle.get_diffuse_bind_group(&self.material),
+      engine
+        .texture_bundle
+        .get_diffuse_bind_group(&self.material.diffuse_texture),
       &[],
     );
     render_pass.set_bind_group(

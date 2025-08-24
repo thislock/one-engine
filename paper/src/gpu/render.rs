@@ -3,10 +3,10 @@ use wgpu::RenderPass;
 
 use crate::{
   engine, files,
-  gpu::{device_drivers, geometry, instances, texture},
+  gpu::{device_drivers, geometry, instances, object::Object, texture},
 };
 pub struct RenderTask {
-  pub mesh: geometry::Mesh,
+  pub objects: Vec<Object>,
 }
 
 impl RenderTask {
@@ -25,72 +25,63 @@ impl RenderTask {
     Ok(())
   }
 
-  pub fn new(drivers: &device_drivers::Drivers, texture_bundle: &mut texture::TextureBundle) -> anyhow::Result<Self> {
+  pub fn new(
+    drivers: &device_drivers::Drivers,
+    texture_bundle: &mut texture::TextureBundle,
+  ) -> anyhow::Result<Self> {
     {
       let asset_bytes = files::load_image_bytes("yees.png")?;
       texture_bundle.add_texture(drivers, &asset_bytes, "yees")?;
     }
 
-    // rendering stuff
-    let create_vertex = |pos: [f32; 3], tex_coords: [f32; 2]| -> geometry::Vertex {
-      Box::new(geometry::ModelVertex {
-        pos,
-        tex_coords,
-        normal: [0.0; 3],
-      })
-    };
-    let vertices: Vec<geometry::Vertex> = vec![
-      create_vertex([-0.0868241, 0.49240386, 0.0], [0.4131759, 0.99240386]),
-      create_vertex([-0.49513406, 0.06958647, 0.0], [0.0048659444, 0.56958647]),
-      create_vertex([-0.21918549, -0.44939706, 0.0], [0.28081453, 0.05060294]),
-      create_vertex([0.35966998, -0.3473291, 0.0], [0.85967, 0.1526709]),
-      create_vertex([0.44147372, 0.2347359, 0.0], [0.9414737, 0.7347359]),
-    ];
+    // use cgmath::prelude::*;
 
-    let indicies = vec![0, 1, 4, 1, 2, 4, 2, 3, 4];
+    // const NUM_INSTANCES_PER_ROW: u32 = 30;
+    // const INSTANCE_DISPLACEMENT: cgmath::Vector3<f32> = cgmath::Vector3::new(
+    //   NUM_INSTANCES_PER_ROW as f32 * 0.5,
+    //   0.0,
+    //   NUM_INSTANCES_PER_ROW as f32 * 0.5,
+    // );
 
-    use cgmath::prelude::*;
+    // let instances = (0..NUM_INSTANCES_PER_ROW)
+    //   .flat_map(|z| {
+    //     (0..NUM_INSTANCES_PER_ROW).map(move |x| {
+    //       let pos = cgmath::Vector3 {
+    //         x: x as f32,
+    //         y: 0.0,
+    //         z: z as f32,
+    //       } - INSTANCE_DISPLACEMENT;
+    //       let rot = if pos.is_zero() {
+    //         // this is needed so an object at (0, 0, 0) won't get scaled to zero
+    //         // as Quaternions can affect scale if they're not created correctly
+    //         cgmath::Quaternion::from_axis_angle(cgmath::Vector3::unit_z(), cgmath::Deg(0.0))
+    //       } else {
+    //         cgmath::Quaternion::from_axis_angle(pos.normalize(), cgmath::Deg(45.0))
+    //       };
 
-    const NUM_INSTANCES_PER_ROW: u32 = 30;
-    const INSTANCE_DISPLACEMENT: cgmath::Vector3<f32> = cgmath::Vector3::new(
-      NUM_INSTANCES_PER_ROW as f32 * 0.5,
-      0.0,
-      NUM_INSTANCES_PER_ROW as f32 * 0.5,
-    );
+    //       instances::Instance { pos, rot }
+    //     })
+    //   })
+    //   .collect::<Vec<_>>();
 
-    let instances = (0..NUM_INSTANCES_PER_ROW)
-      .flat_map(|z| {
-        (0..NUM_INSTANCES_PER_ROW).map(move |x| {
-          let pos = cgmath::Vector3 {
-            x: x as f32,
-            y: 0.0,
-            z: z as f32,
-          } - INSTANCE_DISPLACEMENT;
-          let rot = if pos.is_zero() {
-            // this is needed so an object at (0, 0, 0) won't get scaled to zero
-            // as Quaternions can affect scale if they're not created correctly
-            cgmath::Quaternion::from_axis_angle(cgmath::Vector3::unit_z(), cgmath::Deg(0.0))
-          } else {
-            cgmath::Quaternion::from_axis_angle(pos.normalize(), cgmath::Deg(45.0))
-          };
+    // let mesh = geometry::MeshBuilder::new(vertices, indicies)
+    //   .add_instances(instances)
+    //   .build(&drivers.device)?;
 
-          instances::Instance { pos, rot }
-        })
-      })
-      .collect::<Vec<_>>();
+    let obj = Object::from_obj_file(texture_bundle, drivers, "test.obj")?;
 
-    let mesh = geometry::MeshBuilder::new(vertices, indicies)
-      .add_instances(instances)
-      .build(&drivers.device)?;
-
-    Ok(Self { mesh })
+    Ok(Self { objects: vec![obj] })
   }
 
   fn render_buffers(&self, mut render_pass: RenderPass<'_>, engine: &engine::Engine) {
     // da boss (no touchy)
     render_pass.set_pipeline(&engine.data_pipeline.render_pipeline);
 
-    self.mesh.render_mesh(&mut render_pass, engine);
+    for object in &self.objects {
+      for mesh in &object.meshes {
+        mesh.render_mesh(&mut render_pass, engine);
+      }
+    }
   }
 
   fn finish_rendering(

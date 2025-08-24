@@ -70,8 +70,9 @@ impl Engine {
 
     let mut texture_bundle =
       texture::TextureBundle::new(&drivers).expect("failed to load texture bundle");
-    
-    let render_task = render::RenderTask::new(&drivers, &mut texture_bundle).expect("failed to load rendertask");
+
+    let render_task =
+      render::RenderTask::new(&drivers, &mut texture_bundle).expect("failed to load rendertask");
 
     let loop_group = LoopGroup::new(Duration::from_secs_f64(1.0));
 
