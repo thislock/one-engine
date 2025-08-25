@@ -46,7 +46,7 @@ pub struct Engine {
 
 impl Engine {
   pub fn redraw(&mut self) {
-    self.update();
+    self.update_gpu_buffers();
 
     // try and render crap
     match self.render_task.render(&self) {
@@ -141,7 +141,7 @@ impl Engine {
   // ************     TASKS     ************* //
   // **************************************** //
 
-  pub fn update(&mut self) {
+  pub fn update_gpu_buffers(&mut self) {
     self
       .camera
       .camera_uniform

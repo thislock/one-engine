@@ -2,7 +2,7 @@ use std::sync::Arc;
 extern crate sdl3;
 use sdl3::event::{Event, WindowEvent};
 
-use crate::window::{sdl_handle::SdlHandle, user_input::MovementHandler};
+use crate::window::{sdl_handle::SdlHandle, tickrate, user_input::MovementHandler};
 
 mod files;
 mod maths;
@@ -41,6 +41,8 @@ pub async fn run_engine() -> anyhow::Result<()> {
   let mut movement_buffer = vec![];
   let mut sys_window = sdl_handle.sdl_window.clone();
 
+  let mut benchmark = tickrate::TimeMeasurer::new();
+
   while engine.is_running() {
     movement_buffer.clear();
 
@@ -51,8 +53,12 @@ pub async fn run_engine() -> anyhow::Result<()> {
     }
     MovementHandler::apply_movement(&mut engine, &mut movement_buffer);
 
-    engine.redraw();
+    
     engine.tickrate.tick();
+    benchmark.start_measure();
+    engine.redraw();
+    benchmark.stop_measure();
+    println!("{}", benchmark.get_average());
     engine.tickrate.sleep_until_next_frame();
   }
 

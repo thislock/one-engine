@@ -78,6 +78,8 @@ impl Drivers {
       view_formats: vec![],
     };
 
+    device.poll(wgpu::Maintain::Wait);
+
     Self {
       surface,
       device,
