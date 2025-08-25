@@ -44,6 +44,7 @@ pub async fn run_engine() -> anyhow::Result<()> {
   while engine.is_running() {
     movement_buffer.clear();
 
+    // TODO: make this loop async
     for event in sdl_handle.event_pump.poll_iter() {
       handle_system_events(&event, &mut sys_window, &mut engine);
       MovementHandler::poll_movement(&mut engine, &mut movement_buffer, &event);

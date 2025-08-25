@@ -22,12 +22,17 @@ impl PipelineData {
     surface_config: &wgpu::SurfaceConfiguration,
     bindgroup_data: &raw_bindgroups::BindGroups,
   ) -> wgpu::RenderPipeline {
-    let slice = &bindgroup_data.collect_slice();
-    let render_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-      label: Some("Render Pipeline Layout"),
-      bind_group_layouts: slice,
-      push_constant_ranges: &[],
-    });
+    
+    let render_pipeline_layout = {
+      let slice = &bindgroup_data.collect_slice();
+      
+      device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("Render Pipeline Layout"),
+        bind_group_layouts: slice,
+        push_constant_ranges: &[],
+      })
+    };
+
     let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
       label: Some("Render Pipeline"),
       layout: Some(&render_pipeline_layout),
@@ -56,7 +61,9 @@ impl PipelineData {
         topology: wgpu::PrimitiveTopology::TriangleList, // 1.
         strip_index_format: None,
         front_face: wgpu::FrontFace::Ccw, // 2.
-        cull_mode: Some(wgpu::Face::Back),
+        // depth testing makes backface culling more expensive than it's worth
+        // cull_mode: Some(wgpu::Face::Back),
+        cull_mode: None,
         // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
         polygon_mode: wgpu::PolygonMode::Fill,
         // Requires Features::DEPTH_CLIP_CONTROL
@@ -98,11 +105,6 @@ impl PipelineData {
         label: Some("Shader"),
         source: wgpu::ShaderSource::Wgsl(shader.into()),
       });
-
-    println!(
-      "shader compiled with message: {:?}",
-      shader.get_compilation_info().await.messages
-    );
 
     let render_pipeline =
       Self::init_render_pipeline(&drivers.device, shader, &drivers.surface_config, bindgroups);

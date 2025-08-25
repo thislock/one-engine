@@ -15,6 +15,7 @@ impl Instance {
 
 impl VertexTrait for Instance {
   fn as_bytes(&self) -> Vec<u8> {
+    // TODO: make this actually do something.
     let mut bytes = vec![];
     let floats = [
       self.pos.x,

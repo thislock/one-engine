@@ -3,7 +3,7 @@ use wgpu::RenderPass;
 
 use crate::{
   engine, files,
-  gpu::{device_drivers, geometry, instances, object::Object, texture},
+  gpu::{device_drivers, object::Object, texture},
 };
 pub struct RenderTask {
   pub objects: Vec<Object>,
@@ -33,40 +33,6 @@ impl RenderTask {
       let asset_bytes = files::load_image_bytes("yees.png")?;
       texture_bundle.add_texture(drivers, &asset_bytes, "yees")?;
     }
-
-    // use cgmath::prelude::*;
-
-    // const NUM_INSTANCES_PER_ROW: u32 = 30;
-    // const INSTANCE_DISPLACEMENT: cgmath::Vector3<f32> = cgmath::Vector3::new(
-    //   NUM_INSTANCES_PER_ROW as f32 * 0.5,
-    //   0.0,
-    //   NUM_INSTANCES_PER_ROW as f32 * 0.5,
-    // );
-
-    // let instances = (0..NUM_INSTANCES_PER_ROW)
-    //   .flat_map(|z| {
-    //     (0..NUM_INSTANCES_PER_ROW).map(move |x| {
-    //       let pos = cgmath::Vector3 {
-    //         x: x as f32,
-    //         y: 0.0,
-    //         z: z as f32,
-    //       } - INSTANCE_DISPLACEMENT;
-    //       let rot = if pos.is_zero() {
-    //         // this is needed so an object at (0, 0, 0) won't get scaled to zero
-    //         // as Quaternions can affect scale if they're not created correctly
-    //         cgmath::Quaternion::from_axis_angle(cgmath::Vector3::unit_z(), cgmath::Deg(0.0))
-    //       } else {
-    //         cgmath::Quaternion::from_axis_angle(pos.normalize(), cgmath::Deg(45.0))
-    //       };
-
-    //       instances::Instance { pos, rot }
-    //     })
-    //   })
-    //   .collect::<Vec<_>>();
-
-    // let mesh = geometry::MeshBuilder::new(vertices, indicies)
-    //   .add_instances(instances)
-    //   .build(&drivers.device)?;
 
     let obj = Object::from_obj_file(texture_bundle, drivers, "test.obj")?;
 

@@ -226,7 +226,6 @@ impl TextureBundle {
   pub fn new(drivers: &Drivers) -> anyhow::Result<Self> {
     let texture_bind_group_layout = Self::init_texure_bindgroup_layout(drivers);
     let fallback_texture = Self::init_fallback_texture(drivers, &texture_bind_group_layout)?;
-    println!("created new thingy");
 
     // dynamic textures
     let depth_buffer = DynamicTexture::create_depth_buffer(drivers);

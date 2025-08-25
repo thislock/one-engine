@@ -19,7 +19,7 @@ impl Tickrate {
       last_tick: Instant::now(),
       start_time: Instant::now(),
       delta_time: 0.0,
-      target_framerate: 144,
+      target_framerate: 60,
       wait_time: 0.0,
     }
   }

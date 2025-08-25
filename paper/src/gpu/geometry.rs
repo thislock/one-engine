@@ -45,7 +45,6 @@ impl VertexTrait for ModelVertex {
     bytes.extend(bytemuck::cast_slice(&self.pos));
     bytes.extend(bytemuck::cast_slice(&self.tex_coords));
     bytes.extend(bytemuck::cast_slice(&self.normal));
-    println!("{bytes:?}");
     return bytes;
   }
 }
@@ -201,8 +200,11 @@ impl Mesh {
     if let Some(instance) = &self.instance_buffer {
       render_pass.set_vertex_buffer(1, instance.slice(..));
       render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-      instance_range = 0..self.instances.as_ref().unwrap().len() as _;
+      unsafe { instance_range = 0..self.instances.as_ref().unwrap_unchecked().len() as _; }
     } else {
+      // this fix makes it not crash if there isnt instances, but its absolitely amazingly stupid to leave it like this
+      render_pass.set_vertex_buffer(1, self.vertex_buffer.slice(..));
+      render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
       instance_range = 0..1;
     }
 

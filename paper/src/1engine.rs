@@ -112,7 +112,6 @@ impl Engine {
 
   pub async fn new(sdl_handle: &SdlHandle, window: Arc<sdl3::video::Window>) -> Self {
     let mut engine = Self::new_closed(sdl_handle, window).await;
-
     init_tasks(&mut engine);
 
     return engine;
