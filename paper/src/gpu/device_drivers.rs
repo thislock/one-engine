@@ -74,10 +74,10 @@ impl Drivers {
       present_mode: surface_caps.present_modes[0],
       alpha_mode: surface_caps.alpha_modes[0],
       // may change later, the amount of frames queued for rendering, 1 means lower latency
-      desired_maximum_frame_latency: 2,
+      desired_maximum_frame_latency: 1,
       view_formats: vec![],
     };
-
+    
     device.poll(wgpu::Maintain::Wait);
 
     Self {

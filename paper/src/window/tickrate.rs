@@ -58,7 +58,7 @@ impl TimeMeasurer {
   }
 
   fn add_timestamp(&mut self, dur: time::Duration) {
-    const CAPACITY: usize = 100;
+    const CAPACITY: usize = 1000;
     
     if self.average_time.len() > CAPACITY {
       self.snip_average();

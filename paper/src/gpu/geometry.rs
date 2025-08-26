@@ -12,6 +12,7 @@ pub trait VertexTrait {
   fn desc() -> VertexBufferLayout<'static>
   where
     Self: Sized;
+  
   fn as_bytes(&self) -> Vec<u8>;
 }
 
@@ -111,8 +112,8 @@ pub struct Mesh {
   index_buffer: wgpu::Buffer,
   num_indicies: u32,
 
-  instance_buffer: Option<wgpu::Buffer>,
-  instances: Option<Vec<Instance>>,
+  // instance_buffer: Option<wgpu::Buffer>,
+  // instances: Option<Vec<Instance>>,
 }
 
 impl Mesh {
@@ -134,6 +135,9 @@ impl Mesh {
     index_buffer
   }
 
+  /// i've disabled instances for now, because it hate dealing with them, and i don't
+  /// see myself using this any time soon for the engine, also i hate them. did i mention i hate them?
+  #[allow(unused)]
   fn create_instance_buffer(mesh_builder: &MeshBuilder, device: &wgpu::Device) -> wgpu::Buffer {
     let instance_data: Vec<instances::InstanceRaw> = mesh_builder
       .instances
@@ -149,11 +153,8 @@ impl Mesh {
     });
     instance_buffer
   }
-
-  fn new(mesh_builder: MeshBuilder, device: &wgpu::Device) -> Self {
-    let vertex_buffer = Self::create_vertex_buffer(&mesh_builder, device);
-    let index_buffer = Self::create_index_buffer(&mesh_builder, device);
-
+  #[allow(unused)]
+  fn add_optional_instances(mesh_builder: &MeshBuilder, device: &wgpu::Device) -> Option<wgpu::Buffer> {
     let instance_buffer;
     if mesh_builder.instances.is_some() {
       instance_buffer = Some(Self::create_instance_buffer(&mesh_builder, device));
@@ -161,11 +162,20 @@ impl Mesh {
       instance_buffer = None;
     }
 
+    return instance_buffer;
+  }
+
+  fn new(mesh_builder: MeshBuilder, device: &wgpu::Device) -> Self {
+    let vertex_buffer = Self::create_vertex_buffer(&mesh_builder, device);
+    let index_buffer = Self::create_index_buffer(&mesh_builder, device);
+
+    // let instance_buffer = Self::add_optional_instances(&mesh_builder, device);
+
     Self {
       vertex_buffer,
       index_buffer,
-      instance_buffer,
-      instances: mesh_builder.instances,
+      // instance_buffer,
+      // instances: mesh_builder.instances,
       num_indicies: mesh_builder.indicies.len() as u32,
       material: Material {
         name: "".to_owned(),
@@ -196,17 +206,17 @@ impl Mesh {
     );
     render_pass.set_bind_group(Self::TIME_BINDGROUP, &engine.gpu_time.bindgroup, &[]);
 
-    let instance_range;
-    if let Some(instance) = &self.instance_buffer {
-      render_pass.set_vertex_buffer(1, instance.slice(..));
-      render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-      unsafe { instance_range = 0..self.instances.as_ref().unwrap_unchecked().len() as _; }
-    } else {
-      // this fix makes it not crash if there isnt instances, but its absolitely amazingly stupid to leave it like this
-      render_pass.set_vertex_buffer(1, self.vertex_buffer.slice(..));
-      render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-      instance_range = 0..1;
-    }
+    let instance_range = 0..1;
+    // if let Some(instance) = &self.instance_buffer {
+    //   render_pass.set_vertex_buffer(1, instance.slice(..));
+    //   render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+    //   unsafe { instance_range = 0..self.instances.as_ref().unwrap_unchecked().len() as _; }
+    // } else {
+    //   // this fix makes it not crash if there isnt instances, but its absolitely amazingly stupid to leave it like this
+    //   render_pass.set_vertex_buffer(1, self.vertex_buffer.slice(..));
+    //   render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+    //   instance_range = 0..1;
+    // }
 
     render_pass.draw_indexed(0..self.num_indicies, 0, instance_range);
   }

@@ -10,7 +10,10 @@ pub struct PipelineData {
 
 impl PipelineData {
   fn get_gpu_buffers() -> Vec<wgpu::VertexBufferLayout<'static>> {
-    vec![ModelVertex::desc(), instances::Instance::desc()]
+    vec![
+      ModelVertex::desc(), 
+      //instances::Instance::desc()
+      ]
   }
 
   const VERTEX_SHADER_MAIN: &str = "vs_main";
