@@ -44,6 +44,8 @@ pub async fn run_engine() -> anyhow::Result<()> {
   let mut benchmark = tickrate::TimeMeasurer::new();
 
   while engine.is_running() {
+    benchmark.start_measure();
+
     movement_buffer.clear();
 
     // TODO: make this loop async
@@ -53,9 +55,7 @@ pub async fn run_engine() -> anyhow::Result<()> {
     }
     MovementHandler::apply_movement(&mut engine, &mut movement_buffer);
 
-    
     engine.tickrate.tick();
-    benchmark.start_measure();
     engine.redraw();
     benchmark.stop_measure();
     println!("{}", benchmark.get_average());

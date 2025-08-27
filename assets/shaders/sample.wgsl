@@ -22,6 +22,7 @@ struct VertexInput {
 struct VertexOutput {
     @builtin(position) clip_position: vec4f,
     @location(0) tex_coords: vec2f,
+    @location(1) normal: vec3f,
 };
 
 @vertex
@@ -32,16 +33,17 @@ fn vs_main(
     let angle = time.time_secs;
     let cos_theta = cos(angle);
     let sin_theta = sin(angle);
-    let rotation_z = mat4x4<f32>(
-        vec4<f32>( cos_theta, 0.0, sin_theta, 0.0),
-        vec4<f32>(       0.0, 1.0, 0.0,       0.0),
-        vec4<f32>(-sin_theta, 0.0, cos_theta, 0.0),
-        vec4<f32>(       0.0, 0.0, 0.0,       1.0)
-    );
+    // let rotation_z = mat4x4<f32>(
+    //     vec4<f32>( cos_theta, 0.0, sin_theta, 0.0),
+    //     vec4<f32>(       0.0, 1.0, 0.0,       0.0),
+    //     vec4<f32>(-sin_theta, 0.0, cos_theta, 0.0),
+    //     vec4<f32>(       0.0, 0.0, 0.0,       1.0)
+    // );
 
     var out: VertexOutput;
-    out.clip_position = camera.view_proj * rotation_z * vec4<f32>(model.position, 1.0);
+    out.clip_position = camera.view_proj * vec4<f32>(model.position, 1.0);
     out.tex_coords = model.tex_coords;
+    out.normal = model.normal;
     return out;
 }
 
@@ -54,5 +56,9 @@ var s_diffuse: sampler;
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    return textureSample(t_diffuse, s_diffuse, in.tex_coords);
+
+    let texture_sample_data = textureSample(t_diffuse, s_diffuse, in.tex_coords);
+    let normal_colors = vec4f(in.normal, 1.0);
+
+    return normal_colors;
 }

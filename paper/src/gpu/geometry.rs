@@ -1,10 +1,8 @@
 use wgpu::{util::DeviceExt, RenderPass, VertexBufferLayout};
-
 use crate::{
   engine,
   gpu::{
     instances::{self, Instance},
-    texture,
   },
 };
 
