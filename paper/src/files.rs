@@ -25,6 +25,7 @@ fn load_file_string(filetype: FileType, filename: &str) -> io::Result<String> {
 
 /// i know loading every shader file in the lib folder every time is slow,
 /// but shut up it doesn't REALLY matter for this kinda thing
+/// plus it means i get to keep everything pretty and **functional**
 fn load_lib_files() -> io::Result<Vec<String>> {
   let lib_path = &get_path(FileType::ShaderLib);
   fs::create_dir_all(Path::new(&lib_path))?;
@@ -102,9 +103,9 @@ fn ensure_directory_exists(path: &Path) -> io::Result<()> {
 }
 
 mod folder_names {
-  pub const IMAGES:     &'static str = "images";
-  pub const OBJECTS:    &'static str = "obj";
-  pub const SHADERS:    &'static str = "shaders";
+  pub const IMAGES: &'static str = "images";
+  pub const OBJECTS: &'static str = "obj";
+  pub const SHADERS: &'static str = "shaders";
   pub const SHADER_LIB: &'static str = "shader_lib";
 }
 
@@ -118,7 +119,7 @@ fn get_path(filetype: FileType) -> String {
     FileType::ShaderLib => {
       add_directory(&mut path, folder_names::SHADERS);
       add_directory(&mut path, folder_names::SHADER_LIB);
-    },
+    }
   }
   return path;
 }
