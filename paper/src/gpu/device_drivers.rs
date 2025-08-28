@@ -77,7 +77,7 @@ impl Drivers {
       desired_maximum_frame_latency: 1,
       view_formats: vec![],
     };
-    
+
     device.poll(wgpu::Maintain::Wait);
 
     Self {

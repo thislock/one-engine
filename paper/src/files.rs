@@ -20,14 +20,17 @@ fn load_file_string(filetype: FileType, filename: &str) -> io::Result<String> {
   return Ok(bytes_to_str(shader_bytes)?);
 }
 
+// ********************** SHADERS **************************** //
 pub fn load_shader_str(filename: &str) -> io::Result<String> {
   return Ok(load_file_string(FileType::Shader, filename)?);
 }
 
+// ********************** OBJ FILES **************************** //
 pub fn load_obj_str(filename: &str) -> io::Result<String> {
   return Ok(load_file_string(FileType::Obj, filename)?);
 }
 
+// ********************** IMAGE FILES **************************** //
 pub fn load_image_bytes(filename: &str) -> io::Result<Vec<u8>> {
   return load_file_bytes(FileType::Image, filename);
 }

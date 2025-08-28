@@ -10,7 +10,7 @@ pub trait VertexTrait {
   fn desc() -> VertexBufferLayout<'static>
   where
     Self: Sized;
-  
+
   fn as_bytes(&self) -> Vec<u8>;
 }
 
@@ -109,7 +109,6 @@ pub struct Mesh {
   vertex_buffer: wgpu::Buffer,
   index_buffer: wgpu::Buffer,
   num_indicies: u32,
-
   // instance_buffer: Option<wgpu::Buffer>,
   // instances: Option<Vec<Instance>>,
 }
@@ -152,7 +151,10 @@ impl Mesh {
     instance_buffer
   }
   #[allow(unused)]
-  fn add_optional_instances(mesh_builder: &MeshBuilder, device: &wgpu::Device) -> Option<wgpu::Buffer> {
+  fn add_optional_instances(
+    mesh_builder: &MeshBuilder,
+    device: &wgpu::Device,
+  ) -> Option<wgpu::Buffer> {
     let instance_buffer;
     if mesh_builder.instances.is_some() {
       instance_buffer = Some(Self::create_instance_buffer(&mesh_builder, device));

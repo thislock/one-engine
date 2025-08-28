@@ -1,5 +1,6 @@
 use std::{
-  thread, time::{self, Instant}
+  thread,
+  time::{self, Instant},
 };
 
 pub struct TimeMeasurer {
@@ -8,14 +9,14 @@ pub struct TimeMeasurer {
   average_time: Vec<f32>,
   average_before_div: f64,
   average_float: f64,
-} 
+}
 
 impl TimeMeasurer {
-
   pub fn new() -> Self {
     let now = Instant::now();
     Self {
-      last_time: now, now,
+      last_time: now,
+      now,
       average_time: vec![],
       average_before_div: 0.0,
       average_float: 0.0,
@@ -33,8 +34,9 @@ impl TimeMeasurer {
     return dur.as_secs_f64();
   }
 
-  pub fn get_average(&self) -> f64 { return self.average_float }
-
+  pub fn get_average(&self) -> f64 {
+    return self.average_float;
+  }
 
   fn snip_average(&mut self) {
     let half_point = self.average_time.len() / 2;
@@ -59,7 +61,7 @@ impl TimeMeasurer {
 
   fn add_timestamp(&mut self, dur: time::Duration) {
     const CAPACITY: usize = 1000;
-    
+
     if self.average_time.len() > CAPACITY {
       self.snip_average();
     }
@@ -69,9 +71,7 @@ impl TimeMeasurer {
     self.set_average();
 
     self.average_time.push(dur_f as f32);
-
   }
-
 }
 
 #[allow(unused)]

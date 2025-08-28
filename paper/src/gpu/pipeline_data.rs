@@ -1,10 +1,8 @@
-
 #[allow(unused)]
 use crate::gpu::{
   device_drivers,
   geometry::{ModelVertex, VertexTrait},
-  instances, 
-  raw_bindgroups, texture,
+  instances, raw_bindgroups, texture,
 };
 
 pub struct PipelineData {
@@ -14,9 +12,9 @@ pub struct PipelineData {
 impl PipelineData {
   fn get_gpu_buffers() -> Vec<wgpu::VertexBufferLayout<'static>> {
     vec![
-      ModelVertex::desc(), 
+      ModelVertex::desc(),
       //instances::Instance::desc()
-      ]
+    ]
   }
 
   const VERTEX_SHADER_MAIN: &str = "vs_main";
@@ -28,10 +26,9 @@ impl PipelineData {
     surface_config: &wgpu::SurfaceConfiguration,
     bindgroup_data: &raw_bindgroups::BindGroups,
   ) -> wgpu::RenderPipeline {
-    
     let render_pipeline_layout = {
       let slice = &bindgroup_data.collect_slice();
-      
+
       device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("Render Pipeline Layout"),
         bind_group_layouts: slice,
