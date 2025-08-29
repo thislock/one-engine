@@ -1,8 +1,8 @@
 use std::sync::Arc;
 extern crate sdl3;
-use sdl3::event::{Event, WindowEvent};
+use sdl3::{event::{Event, WindowEvent}, keyboard::Keycode};
 
-use crate::window::{sdl_handle::SdlHandle, tickrate, user_input::MovementHandler};
+use crate::{gpu::pipeline_data, window::{sdl_handle::SdlHandle, tickrate, user_input::MovementHandler}};
 
 mod files;
 mod maths;
@@ -48,17 +48,30 @@ pub async fn run_engine() -> anyhow::Result<()> {
 
     movement_buffer.clear();
 
-    // TODO: make this loop async
     for event in sdl_handle.event_pump.poll_iter() {
       handle_system_events(&event, &mut sys_window, &mut engine);
       MovementHandler::poll_movement(&mut engine, &mut movement_buffer, &event);
+      match event {
+        Event::KeyDown { keycode, .. } => {
+          if let Some(key) = keycode {
+            match key {
+              Keycode::_0 => {
+                println!("recompiled shaders");
+                pipeline_data::PipelineData::recompile_shaders(&mut engine).await?;
+              },
+              _=>{}
+            }
+          }
+        },
+        _ => {},
+      }      
     }
     MovementHandler::apply_movement(&mut engine, &mut movement_buffer);
 
     engine.tickrate.tick();
     engine.redraw();
     benchmark.stop_measure();
-    println!("{}", benchmark.get_average());
+    //println!("{}", benchmark.get_average());
     engine.tickrate.sleep_until_next_frame();
   }
 

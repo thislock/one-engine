@@ -34,5 +34,5 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let texture_sample_data = textureSample(t_diffuse, s_diffuse, in.tex_coords);
     let normal_colors = vec4f(in.normal, 1.0);
 
-    return normal_colors;
+    return texture_sample_data;
 }

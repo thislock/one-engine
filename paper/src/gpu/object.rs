@@ -3,7 +3,6 @@ use std::ffi::OsStr;
 use crate::files::{self, load_obj_str};
 use crate::gpu::device_drivers::Drivers;
 use crate::gpu::geometry::{Material, Mesh, MeshBuilder, ModelVertex, Vertex};
-use crate::gpu::instances;
 use crate::gpu::texture::TextureBundle;
 use crate::maths::Vec3;
 
@@ -88,28 +87,6 @@ impl Object {
     let meshes = models
       .into_iter()
       .map(|m| {
-        use cgmath::prelude::*;
-
-        const NUM_INSTANCES_PER_ROW: u32 = 20;
-        const SPACE_BETWEEN: f32 = 3.0;
-        let instances = (0..NUM_INSTANCES_PER_ROW)
-          .flat_map(|z| {
-            (0..NUM_INSTANCES_PER_ROW).map(move |x| {
-              let x = SPACE_BETWEEN * (x as f32 - NUM_INSTANCES_PER_ROW as f32 / 2.0);
-              let z = SPACE_BETWEEN * (z as f32 - NUM_INSTANCES_PER_ROW as f32 / 2.0);
-
-              let pos = cgmath::Vector3 { x, y: 0.0, z };
-
-              let rot = if pos.is_zero() {
-                cgmath::Quaternion::from_axis_angle(cgmath::Vector3::unit_z(), cgmath::Deg(0.0))
-              } else {
-                cgmath::Quaternion::from_axis_angle(pos.normalize(), cgmath::Deg(45.0))
-              };
-
-              instances::Instance { pos, rot }
-            })
-          })
-          .collect::<Vec<_>>();
         let vertices: Vec<Vertex> = (0..m.mesh.positions.len() / 3)
           .map(|i| {
             if m.mesh.normals.is_empty() {
@@ -142,7 +119,6 @@ impl Object {
           .collect();
 
         MeshBuilder::new(vertices, m.mesh.indices)
-          .add_instances(instances)
           .build(&drivers.device)
           .unwrap()
       })

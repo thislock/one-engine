@@ -1,3 +1,4 @@
+use crate::engine;
 #[allow(unused)]
 use crate::gpu::{
   device_drivers,
@@ -95,19 +96,42 @@ impl PipelineData {
     return render_pipeline;
   }
 
-  pub async fn new(
-    bindgroups: &raw_bindgroups::BindGroups,
+  pub fn create_shader_module(
     drivers: &device_drivers::Drivers,
-  ) -> anyhow::Result<Self> {
-    use crate::files;
-    let shader = files::load_shader_str("sample.wgsl")?;
+  ) -> anyhow::Result<wgpu::ShaderModule> {
+    let shader_string = crate::files::load_shader_str("sample.wgsl")?;
 
     let shader = drivers
       .device
       .create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("Shader"),
-        source: wgpu::ShaderSource::Wgsl(shader.into()),
+        source: wgpu::ShaderSource::Wgsl(shader_string.into()),
       });
+
+    return Ok(shader);
+  }
+
+  pub async fn recompile_shaders(
+    engine: &mut engine::Engine
+  ) -> anyhow::Result<()> {
+    let shader = Self::create_shader_module(&engine.drivers)?;
+
+    engine.data_pipeline.render_pipeline =
+      Self::init_render_pipeline(
+        &engine.drivers.device, 
+        shader, 
+        &engine.drivers.surface_config, 
+        &engine.data_bindgroups
+      );
+
+    return Ok(());
+  }
+
+  pub async fn new(
+    bindgroups: &raw_bindgroups::BindGroups,
+    drivers: &device_drivers::Drivers,
+  ) -> anyhow::Result<Self> {
+    let shader = Self::create_shader_module(drivers)?;
 
     let render_pipeline =
       Self::init_render_pipeline(&drivers.device, shader, &drivers.surface_config, bindgroups);
