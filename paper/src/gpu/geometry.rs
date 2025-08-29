@@ -84,7 +84,7 @@ impl MeshBuilder {
   }
 
   pub fn build(self, device: &wgpu::Device) -> anyhow::Result<Mesh> {
-    let texture_id = self.texture_id.clone().unwrap_or(String::from(""));
+    let texture_id = self.texture_id.clone().unwrap_or(String::from("yees"));
 
     let mut mesh = Mesh::new(self, device);
 

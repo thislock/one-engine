@@ -8,7 +8,7 @@ use std::{
 use crate::{
   gpu::{
     camera, device_drivers,
-    pipeline_data::PipelineData,
+    shader_pipeline::ShaderPipeline,
     raw_bindgroups, render,
     sync_data::{self, GpuTime},
     texture,
@@ -21,7 +21,7 @@ use crate::{
 };
 
 pub struct Engine {
-  pub data_pipeline: PipelineData,
+  pub data_pipeline: ShaderPipeline,
 
   #[allow(unused)]
   pub data_bindgroups: raw_bindgroups::BindGroups,
@@ -84,7 +84,7 @@ impl Engine {
     data_bindgroups.add_bind(cam.camera_bind_group_layout.clone());
     data_bindgroups.add_bind(gpu_time.layout.clone());
 
-    let data_pipeline = PipelineData::new(&data_bindgroups, &drivers).await.unwrap();
+    let data_pipeline = ShaderPipeline::new(&data_bindgroups, &drivers).await.unwrap();
     let task_service = tasks::TaskService::new(translate_surface::SyncWindow(window.clone()));
     let tickrate = tickrate::Tickrate::new();
 

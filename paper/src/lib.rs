@@ -2,7 +2,7 @@ use std::sync::Arc;
 extern crate sdl3;
 use sdl3::{event::{Event, WindowEvent}, keyboard::Keycode};
 
-use crate::{gpu::pipeline_data, window::{sdl_handle::SdlHandle, tickrate, user_input::MovementHandler}};
+use crate::{gpu::shader_pipeline, window::{sdl_handle::SdlHandle, tickrate, user_input::MovementHandler}};
 
 mod files;
 mod maths;
@@ -57,7 +57,7 @@ pub async fn run_engine() -> anyhow::Result<()> {
             match key {
               Keycode::_0 => {
                 println!("recompiled shaders");
-                pipeline_data::PipelineData::recompile_shaders(&mut engine).await?;
+                shader_pipeline::ShaderPipeline::recompile_shaders(&mut engine).await?;
               },
               _=>{}
             }

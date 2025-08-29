@@ -75,6 +75,7 @@ impl Object {
       let diffuse_texture_name = m
         .diffuse_texture
         .expect("FAILED TO GET DIFFUSE TEXTURE NAME");
+      println!("{}", diffuse_texture_name);
       let diffuse_texture_bytes = files::load_image_bytes(&diffuse_texture_name)?;
       texture_bundle.add_texture(drivers, &diffuse_texture_bytes, &diffuse_texture_name)?;
 

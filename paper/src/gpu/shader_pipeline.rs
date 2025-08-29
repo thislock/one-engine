@@ -6,11 +6,11 @@ use crate::gpu::{
   instances, raw_bindgroups, texture,
 };
 
-pub struct PipelineData {
+pub struct ShaderPipeline {
   pub render_pipeline: wgpu::RenderPipeline,
 }
 
-impl PipelineData {
+impl ShaderPipeline {
   fn get_gpu_buffers() -> Vec<wgpu::VertexBufferLayout<'static>> {
     vec![
       ModelVertex::desc(),
