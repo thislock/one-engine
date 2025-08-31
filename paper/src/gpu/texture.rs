@@ -6,6 +6,7 @@ use wgpu::{BindGroup, BindGroupLayout};
 
 use crate::gpu::device_drivers::Drivers;
 
+#[derive(Clone)]
 pub struct DynamicTexture {
   #[allow(unused)]
   pub texture: wgpu::Texture,
@@ -40,6 +41,42 @@ impl DynamicTexture {
     let texture = drivers.device.create_texture(&desc);
 
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+    let sampler = Self::get_sampler(drivers);
+
+    Self {
+      texture,
+      sampler,
+      view,
+    }
+  }
+
+  fn init_texure_bindgroup_layout(drivers: &Drivers) -> BindGroupLayout {
+    drivers
+      .device
+      .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        entries: &[
+          wgpu::BindGroupLayoutEntry {
+            binding: 0,
+            visibility: wgpu::ShaderStages::FRAGMENT,
+            ty: wgpu::BindingType::Texture {
+              multisampled: false,
+              view_dimension: wgpu::TextureViewDimension::D2,
+              sample_type: wgpu::TextureSampleType::Depth {  },
+            },
+            count: None,
+          },
+          wgpu::BindGroupLayoutEntry {
+            binding: 1,
+            visibility: wgpu::ShaderStages::FRAGMENT,
+            ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+            count: None,
+          },
+        ],
+        label: Some("dynamic_texture_bind_group_layout"),
+      })
+  }
+
+  fn get_sampler(drivers: &Drivers) -> wgpu::Sampler {
     let sampler = drivers.device.create_sampler(&wgpu::SamplerDescriptor {
       address_mode_u: wgpu::AddressMode::ClampToEdge,
       address_mode_v: wgpu::AddressMode::ClampToEdge,
@@ -52,13 +89,9 @@ impl DynamicTexture {
       lod_max_clamp: 100.0,
       ..Default::default()
     });
-
-    Self {
-      texture,
-      sampler,
-      view,
-    }
+    sampler
   }
+
 }
 
 pub struct ImageTexture {
@@ -91,6 +124,7 @@ impl ImageTexture {
       height: dimensions.1,
       depth_or_array_layers: 1,
     };
+
     let format = wgpu::TextureFormat::Rgba8UnormSrgb;
     let texture = drivers.device.create_texture(&wgpu::TextureDescriptor {
       label,
@@ -103,33 +137,21 @@ impl ImageTexture {
       view_formats: &[],
     });
 
-    drivers.queue.write_texture(
-      wgpu::TexelCopyTextureInfo {
-        aspect: wgpu::TextureAspect::All,
-        texture: &texture,
-        mip_level: 0,
-        origin: wgpu::Origin3d::ZERO,
-      },
-      &rgba,
-      wgpu::TexelCopyBufferLayout {
-        offset: 0,
-        bytes_per_row: Some(4 * dimensions.0),
-        rows_per_image: Some(dimensions.1),
-      },
-      size,
-    );
-    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+    Self::copy_to_texture(
+      texture_bind_group_layout,
+      drivers,
+      rgba,
+      dimensions,
+      texture,
+    )
+  }
 
-    let sampler = drivers.device.create_sampler(&wgpu::SamplerDescriptor {
-      address_mode_u: wgpu::AddressMode::ClampToEdge,
-      address_mode_v: wgpu::AddressMode::ClampToEdge,
-      address_mode_w: wgpu::AddressMode::ClampToEdge,
-      mag_filter: wgpu::FilterMode::Linear,
-      min_filter: wgpu::FilterMode::Nearest,
-      mipmap_filter: wgpu::FilterMode::Nearest,
-      ..Default::default()
-    });
-
+  fn get_diffuse_bind(
+    texture_bind_group_layout: &BindGroupLayout,
+    drivers: &Drivers,
+    view: wgpu::TextureView,
+    sampler: wgpu::Sampler,
+  ) -> BindGroup {
     let diffuse_bind_group = drivers
       .device
       .create_bind_group(&wgpu::BindGroupDescriptor {
@@ -146,10 +168,61 @@ impl ImageTexture {
         ],
         label: Some("diffuse_bind_group"),
       });
+    diffuse_bind_group
+  }
+
+  fn copy_to_texture(
+    texture_bind_group_layout: &BindGroupLayout,
+    drivers: &Drivers,
+    rgba: image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
+    dimensions: (u32, u32),
+    texture: wgpu::Texture,
+  ) -> Result<ImageTexture, Error> {
+    let size = wgpu::Extent3d {
+      width: dimensions.0,
+      height: dimensions.1,
+      depth_or_array_layers: 1,
+    };
+
+    drivers.queue.write_texture(
+      wgpu::TexelCopyTextureInfo {
+        aspect: wgpu::TextureAspect::All,
+        texture: &texture,
+        mip_level: 0,
+        origin: wgpu::Origin3d::ZERO,
+      },
+      &rgba,
+      wgpu::TexelCopyBufferLayout {
+        offset: 0,
+        bytes_per_row: Some(4 * dimensions.0),
+        rows_per_image: Some(dimensions.1),
+      },
+      size,
+    );
+
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+    let sampler = Self::get_sampler(drivers);
+
+    let diffuse_bind_group =
+      Self::get_diffuse_bind(texture_bind_group_layout, drivers, view, sampler);
     Ok(Self {
       texture,
       diffuse_bind_group,
     })
+  }
+
+  fn get_sampler(drivers: &Drivers) -> wgpu::Sampler {
+    let sampler = drivers.device.create_sampler(&wgpu::SamplerDescriptor {
+      address_mode_u: wgpu::AddressMode::ClampToEdge,
+      address_mode_v: wgpu::AddressMode::ClampToEdge,
+      address_mode_w: wgpu::AddressMode::ClampToEdge,
+      mag_filter: wgpu::FilterMode::Linear,
+      min_filter: wgpu::FilterMode::Nearest,
+      mipmap_filter: wgpu::FilterMode::Nearest,
+      ..Default::default()
+    });
+    sampler
   }
 }
 
@@ -179,31 +252,29 @@ impl TextureBundle {
   }
 
   fn init_texure_bindgroup_layout(drivers: &Drivers) -> BindGroupLayout {
-    let texture_bind_group_layout =
-      drivers
-        .device
-        .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-          entries: &[
-            wgpu::BindGroupLayoutEntry {
-              binding: 0,
-              visibility: wgpu::ShaderStages::FRAGMENT,
-              ty: wgpu::BindingType::Texture {
-                multisampled: false,
-                view_dimension: wgpu::TextureViewDimension::D2,
-                sample_type: wgpu::TextureSampleType::Float { filterable: true },
-              },
-              count: None,
+    drivers
+      .device
+      .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        entries: &[
+          wgpu::BindGroupLayoutEntry {
+            binding: 0,
+            visibility: wgpu::ShaderStages::FRAGMENT,
+            ty: wgpu::BindingType::Texture {
+              multisampled: false,
+              view_dimension: wgpu::TextureViewDimension::D2,
+              sample_type: wgpu::TextureSampleType::Float { filterable: true },
             },
-            wgpu::BindGroupLayoutEntry {
-              binding: 1,
-              visibility: wgpu::ShaderStages::FRAGMENT,
-              ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-              count: None,
-            },
-          ],
-          label: Some("texture_bind_group_layout"),
-        });
-    texture_bind_group_layout
+            count: None,
+          },
+          wgpu::BindGroupLayoutEntry {
+            binding: 1,
+            visibility: wgpu::ShaderStages::FRAGMENT,
+            ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+            count: None,
+          },
+        ],
+        label: Some("texture_bind_group_layout"),
+      })
   }
 
   fn init_fallback_texture(

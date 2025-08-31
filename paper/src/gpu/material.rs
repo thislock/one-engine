@@ -2,13 +2,13 @@ use std::sync::Arc;
 use crate::gpu::texture::ImageTexture;
 
 pub struct Material {
-  diffuse_texture: Arc<ImageTexture>,
+  pub diffuse_texture: wgpu::BindGroup,
 }
 
 impl Material {
-  pub fn new(diffuse: Arc<ImageTexture>) -> Self {
+  pub fn new_basic(diffuse: wgpu::BindGroup) -> Self {
     Self {
       diffuse_texture: diffuse,
     }
-  } 
+  }
 }

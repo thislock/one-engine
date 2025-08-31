@@ -3,7 +3,13 @@ use wgpu::RenderPass;
 
 use crate::{
   engine,
-  gpu::{device_drivers, object::Object, raw_bindgroups, shaders::{ShaderBuilder, ShaderBundle, ShaderPipeline}, texture},
+  gpu::{
+    device_drivers,
+    object::Object,
+    raw_bindgroups,
+    shaders::{ShaderBuilder, ShaderBundle, ShaderPipeline},
+    texture,
+  },
 };
 pub struct RenderTask {
   pub objects: Vec<Object>,
@@ -32,7 +38,6 @@ impl RenderTask {
     drivers: &device_drivers::Drivers,
     bind_groups: &raw_bindgroups::BindGroups,
   ) -> anyhow::Result<()> {
-    
     let shader_builder = ShaderBuilder::from_file("sample.wgsl".to_owned());
     let mut shader = ShaderPipeline::from_shader(bind_groups, drivers, shader_builder).await?;
 

@@ -4,6 +4,7 @@ use crate::{
   gpu::{
     device_drivers::Drivers,
     instances::{self, Instance},
+    material::Material,
   },
 };
 
@@ -67,6 +68,7 @@ pub struct MeshBuilder {
   indicies: Vec<u32>,
   instances: Option<Vec<Instance>>,
   texture_id: Option<String>,
+  material: Option<Material>,
 }
 
 impl MeshBuilder {
@@ -76,6 +78,7 @@ impl MeshBuilder {
       indicies: indices,
       texture_id: None,
       instances: None,
+      material: None,
     }
   }
 
@@ -84,9 +87,8 @@ impl MeshBuilder {
     self
   }
 
-  pub fn build(self, drivers: &Drivers) -> anyhow::Result<Mesh> {
-    let mesh = Mesh::new(self, &drivers.device);
-
+  pub fn build(self, drivers: &Drivers, material: Material) -> anyhow::Result<Mesh> {
+    let mesh = Mesh::new(self, &drivers.device, material);
     Ok(mesh)
   }
 }
@@ -95,8 +97,7 @@ pub struct Mesh {
   vertex_buffer: wgpu::Buffer,
   index_buffer: wgpu::Buffer,
   num_indicies: u32,
-  // instance_buffer: Option<wgpu::Buffer>,
-  // instances: Option<Vec<Instance>>,
+  material: Material,
 }
 
 impl Mesh {
@@ -137,22 +138,22 @@ impl Mesh {
     instance_buffer
   }
 
-  #[allow(unused)]
-  fn add_optional_instances(
-    mesh_builder: &MeshBuilder,
-    device: &wgpu::Device,
-  ) -> Option<wgpu::Buffer> {
-    let instance_buffer;
-    if mesh_builder.instances.is_some() {
-      instance_buffer = Some(Self::create_instance_buffer(&mesh_builder, device));
-    } else {
-      instance_buffer = None;
-    }
+  // #[allow(unused)]
+  // fn add_optional_instances(
+  //   mesh_builder: &MeshBuilder,
+  //   device: &wgpu::Device,
+  // ) -> Option<wgpu::Buffer> {
+  //   let instance_buffer;
+  //   if mesh_builder.instances.is_some() {
+  //     instance_buffer = Some(Self::create_instance_buffer(&mesh_builder, device));
+  //   } else {
+  //     instance_buffer = None;
+  //   }
 
-    return instance_buffer;
-  }
+  //   return instance_buffer;
+  // }
 
-  fn new(mesh_builder: MeshBuilder, device: &wgpu::Device) -> Self {
+  fn new(mesh_builder: MeshBuilder, device: &wgpu::Device, material: Material) -> Self {
     let vertex_buffer = Self::create_vertex_buffer(&mesh_builder, device);
     let index_buffer = Self::create_index_buffer(&mesh_builder, device);
 
@@ -162,8 +163,7 @@ impl Mesh {
       vertex_buffer,
       index_buffer,
       num_indicies: mesh_builder.indicies.len() as u32,
-      // instance_buffer,
-      // instances: mesh_builder.instances,
+      material,
     }
   }
 
@@ -178,9 +178,7 @@ impl Mesh {
     // set the diffuse texture
     render_pass.set_bind_group(
       Self::TEXTURE_BINDGROUP,
-      engine
-        .texture_bundle
-        .get_diffuse_bind_group(""),
+      &self.material.diffuse_texture,
       &[],
     );
     // camera transform

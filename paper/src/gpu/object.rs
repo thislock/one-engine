@@ -2,6 +2,7 @@ use std::ffi::OsStr;
 use std::sync::Arc;
 
 use crate::files::{self, load_obj_str};
+use crate::gpu;
 use crate::gpu::device_drivers::Drivers;
 use crate::gpu::geometry::{Mesh, MeshBuilder, ModelVertex, Vertex, VertexTrait};
 use crate::gpu::texture::TextureBundle;
@@ -72,7 +73,7 @@ impl Object {
 
     Self::load_materials(texture_bundle, drivers, obj_materials)?;
 
-    let meshes = Self::load_meshes(drivers, models);
+    let meshes = Self::load_meshes(texture_bundle, drivers, models);
 
     Ok(Self {
       meshes,
@@ -130,14 +131,22 @@ impl Object {
     })
   }
 
-  fn load_meshes(drivers: &Drivers, models: Vec<tobj::Model>) -> Vec<Arc<Mesh>> {
+  fn load_meshes(
+    texture_bundle: &mut TextureBundle,
+    drivers: &Drivers,
+    models: Vec<tobj::Model>,
+  ) -> Vec<Arc<Mesh>> {
     let meshes = models
       .into_iter()
       .map(|m| {
         let vertices = Self::obj_to_vertexes(&m);
 
+        let material = gpu::material::Material::new_basic(
+          texture_bundle.get_diffuse_bind_group("").clone()
+        );
+
         let mesh = MeshBuilder::new(vertices, m.mesh.indices)
-          .build(drivers)
+          .build(drivers, material)
           .unwrap();
 
         Arc::new(mesh)
