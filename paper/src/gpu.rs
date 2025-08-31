@@ -8,3 +8,4 @@ pub mod render;
 pub mod shaders;
 pub mod sync_data;
 pub mod texture;
+pub mod material;

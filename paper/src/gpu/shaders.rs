@@ -23,11 +23,7 @@ impl ShaderBundle {
   }
 
   pub fn add_shader(&mut self, shader: ShaderPipeline) -> anyhow::Result<()> {
-    //let error = anyhow::Error::msg("failed to add shader to shader bundle");
-    self
-      .shaders
-      .insert(uuid::Uuid::new_v4(), shader);
-
+    self.shaders.insert(uuid::Uuid::new_v4(), shader);
     return Ok(());
   }
 
