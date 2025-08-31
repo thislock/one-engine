@@ -3,10 +3,11 @@ use wgpu::RenderPass;
 
 use crate::{
   engine, files,
-  gpu::{device_drivers, object::Object, texture},
+  gpu::{device_drivers, object::Object, raw_bindgroups, shaders::{ShaderBuilder, ShaderBundle, ShaderPipeline}, texture},
 };
 pub struct RenderTask {
   pub objects: Vec<Object>,
+  shaders: ShaderBundle,
 }
 
 impl RenderTask {
@@ -25,26 +26,37 @@ impl RenderTask {
     Ok(())
   }
 
-  pub fn new(
+  pub async fn add_object(
+    &mut self,
+    object: Object,
     drivers: &device_drivers::Drivers,
-    texture_bundle: &mut texture::TextureBundle,
-  ) -> anyhow::Result<Self> {
-    {
-      let asset_bytes = files::load_image_bytes("yees.png")?;
-      texture_bundle.add_texture(drivers, &asset_bytes, "yees")?;
+    bind_groups: &raw_bindgroups::BindGroups,
+  ) -> anyhow::Result<()> {
+    
+    let shader_builder = ShaderBuilder::from_file("sample.wgsl".to_owned());
+    let mut shader = ShaderPipeline::from_shader(bind_groups, drivers, shader_builder).await?;
+
+    for mesh in object.meshes.clone() {
+      shader.meshes.push(mesh);
     }
 
-    let obj = Object::from_obj_file(texture_bundle, drivers, "test.obj")?;
+    self.objects.push(object);
+    self.shaders.add_shader(shader)?;
 
-    Ok(Self { objects: vec![obj] })
+    Ok(())
+  }
+
+  pub fn new() -> anyhow::Result<Self> {
+    Ok(Self {
+      objects: vec![],
+      shaders: ShaderBundle::new(),
+    })
   }
 
   fn render_buffers(&self, mut render_pass: RenderPass<'_>, engine: &engine::Engine) {
-    // da boss (no touchy)
-    render_pass.set_pipeline(&engine.data_pipeline.render_pipeline);
-
-    for object in &self.objects {
-      for mesh in &object.meshes {
+    for shader in self.shaders.iter_shaders() {
+      render_pass.set_pipeline(&shader.render_pipeline);
+      for mesh in &shader.meshes {
         mesh.render_mesh(&mut render_pass, engine);
       }
     }

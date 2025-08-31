@@ -1,8 +1,9 @@
 use std::ffi::OsStr;
+use std::sync::Arc;
 
 use crate::files::{self, load_obj_str};
 use crate::gpu::device_drivers::Drivers;
-use crate::gpu::geometry::{Material, Mesh, MeshBuilder, ModelVertex, Vertex};
+use crate::gpu::geometry::{Mesh, MeshBuilder, ModelVertex, Vertex, VertexTrait};
 use crate::gpu::texture::TextureBundle;
 use crate::maths::Vec3;
 
@@ -23,19 +24,18 @@ trait Object3D {
 }
 
 pub struct Object {
-  pub meshes: Vec<Mesh>,
-  pub materials: Vec<Material>,
+  pub meshes: Vec<Arc<Mesh>>,
 
-  pub local_pos: Vec3,
-  pub local_rot: Rot,
+  pub global_pos: Vec3,
+  pub global_rot: Rot,
 }
 
 impl Object3D for Object {
   fn get_pos(&self) -> &Vec3 {
-    return &self.local_pos;
+    return &self.global_pos;
   }
   fn get_rot(&self) -> &Rot {
-    return &self.local_rot;
+    return &self.global_rot;
   }
 }
 
@@ -70,66 +70,79 @@ impl Object {
       },
     )?;
 
-    let mut materials = Vec::new();
-    for m in obj_materials? {
+    Self::load_materials(texture_bundle, drivers, obj_materials)?;
+
+    let meshes = Self::load_meshes(drivers, models);
+
+    Ok(Self {
+      meshes,
+      global_pos: Self::DEFAULT_POSITION,
+      global_rot: Self::DEFAULT_ROTATION,
+    })
+  }
+
+  fn obj_to_vertexes(m: &tobj::Model) -> Vec<Box<dyn VertexTrait>> {
+    let vertices: Vec<Vertex> = (0..m.mesh.positions.len() / 3)
+      .map(|i| {
+        if m.mesh.normals.is_empty() {
+          Box::new(ModelVertex {
+            pos: [
+              m.mesh.positions[i * 3],
+              m.mesh.positions[i * 3 + 1],
+              m.mesh.positions[i * 3 + 2],
+            ],
+            tex_coords: [m.mesh.texcoords[i * 2], 1.0 - m.mesh.texcoords[i * 2 + 1]],
+            normal: [0.0, 0.0, 0.0],
+          })
+        } else {
+          Box::new(ModelVertex {
+            pos: [
+              m.mesh.positions[i * 3],
+              m.mesh.positions[i * 3 + 1],
+              m.mesh.positions[i * 3 + 2],
+            ],
+            tex_coords: [m.mesh.texcoords[i * 2], 1.0 - m.mesh.texcoords[i * 2 + 1]],
+            normal: [
+              m.mesh.normals[i * 3],
+              m.mesh.normals[i * 3 + 1],
+              m.mesh.normals[i * 3 + 2],
+            ],
+          })
+        }
+      })
+      .map(|v: Box<ModelVertex>| v as Vertex)
+      .collect();
+    vertices
+  }
+
+  fn load_materials(
+    texture_bundle: &mut TextureBundle,
+    drivers: &Drivers,
+    obj_materials: Result<Vec<tobj::Material>, tobj::LoadError>,
+  ) -> Result<(), anyhow::Error> {
+    Ok(for m in obj_materials? {
       let diffuse_texture_name = m
         .diffuse_texture
         .expect("FAILED TO GET DIFFUSE TEXTURE NAME");
       println!("{}", diffuse_texture_name);
       let diffuse_texture_bytes = files::load_image_bytes(&diffuse_texture_name)?;
       texture_bundle.add_texture(drivers, &diffuse_texture_bytes, &diffuse_texture_name)?;
+    })
+  }
 
-      materials.push(Material {
-        name: m.name,
-        diffuse_texture: diffuse_texture_name,
-      })
-    }
-
+  fn load_meshes(drivers: &Drivers, models: Vec<tobj::Model>) -> Vec<Arc<Mesh>> {
     let meshes = models
       .into_iter()
       .map(|m| {
-        let vertices: Vec<Vertex> = (0..m.mesh.positions.len() / 3)
-          .map(|i| {
-            if m.mesh.normals.is_empty() {
-              Box::new(ModelVertex {
-                pos: [
-                  m.mesh.positions[i * 3],
-                  m.mesh.positions[i * 3 + 1],
-                  m.mesh.positions[i * 3 + 2],
-                ],
-                tex_coords: [m.mesh.texcoords[i * 2], 1.0 - m.mesh.texcoords[i * 2 + 1]],
-                normal: [0.0, 0.0, 0.0],
-              })
-            } else {
-              Box::new(ModelVertex {
-                pos: [
-                  m.mesh.positions[i * 3],
-                  m.mesh.positions[i * 3 + 1],
-                  m.mesh.positions[i * 3 + 2],
-                ],
-                tex_coords: [m.mesh.texcoords[i * 2], 1.0 - m.mesh.texcoords[i * 2 + 1]],
-                normal: [
-                  m.mesh.normals[i * 3],
-                  m.mesh.normals[i * 3 + 1],
-                  m.mesh.normals[i * 3 + 2],
-                ],
-              })
-            }
-          })
-          .map(|v: Box<ModelVertex>| v as Vertex)
-          .collect();
+        let vertices = Self::obj_to_vertexes(&m);
 
-        MeshBuilder::new(vertices, m.mesh.indices)
-          .build(&drivers.device)
-          .unwrap()
+        let mesh = MeshBuilder::new(vertices, m.mesh.indices)
+          .build(drivers)
+          .unwrap();
+
+        Arc::new(mesh)
       })
       .collect::<Vec<_>>();
-
-    Ok(Self {
-      meshes,
-      materials,
-      local_pos: Self::DEFAULT_POSITION,
-      local_rot: Self::DEFAULT_ROTATION,
-    })
+    meshes
   }
 }

@@ -2,6 +2,7 @@ use wgpu::{util::DeviceExt, RenderPass, VertexBufferLayout};
 use crate::{
   engine,
   gpu::{
+    device_drivers::Drivers,
     instances::{self, Instance},
   },
 };
@@ -83,29 +84,14 @@ impl MeshBuilder {
     self
   }
 
-  pub fn build(self, device: &wgpu::Device) -> anyhow::Result<Mesh> {
-    let texture_id = self.texture_id.clone().unwrap_or(String::from("yees"));
-
-    let mut mesh = Mesh::new(self, device);
-
-    mesh.material = Material {
-      name: "".to_owned(),
-      diffuse_texture: texture_id,
-    };
+  pub fn build(self, drivers: &Drivers) -> anyhow::Result<Mesh> {
+    let mesh = Mesh::new(self, &drivers.device);
 
     Ok(mesh)
   }
 }
 
-pub struct Material {
-  pub name: String,
-  pub diffuse_texture: String,
-}
-
 pub struct Mesh {
-  // change this to use materials
-  material: Material,
-
   vertex_buffer: wgpu::Buffer,
   index_buffer: wgpu::Buffer,
   num_indicies: u32,
@@ -150,6 +136,7 @@ impl Mesh {
     });
     instance_buffer
   }
+
   #[allow(unused)]
   fn add_optional_instances(
     mesh_builder: &MeshBuilder,
@@ -174,13 +161,9 @@ impl Mesh {
     Self {
       vertex_buffer,
       index_buffer,
+      num_indicies: mesh_builder.indicies.len() as u32,
       // instance_buffer,
       // instances: mesh_builder.instances,
-      num_indicies: mesh_builder.indicies.len() as u32,
-      material: Material {
-        name: "".to_owned(),
-        diffuse_texture: "".to_owned(),
-      },
     }
   }
 
@@ -192,18 +175,21 @@ impl Mesh {
     render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
     render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
 
+    // set the diffuse texture
     render_pass.set_bind_group(
       Self::TEXTURE_BINDGROUP,
       engine
         .texture_bundle
-        .get_diffuse_bind_group(&self.material.diffuse_texture),
+        .get_diffuse_bind_group(""),
       &[],
     );
+    // camera transform
     render_pass.set_bind_group(
       Self::CAMERA_TRANSFORM_BINDGROUP,
       &engine.camera.camera_bind_group,
       &[],
     );
+    // time
     render_pass.set_bind_group(Self::TIME_BINDGROUP, &engine.gpu_time.bindgroup, &[]);
 
     let instance_range = 0..1;

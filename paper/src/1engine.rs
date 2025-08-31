@@ -7,9 +7,7 @@ use std::{
 
 use crate::{
   gpu::{
-    camera, device_drivers,
-    shader_pipeline::ShaderPipeline,
-    raw_bindgroups, render,
+    camera, device_drivers, raw_bindgroups, render,
     sync_data::{self, GpuTime},
     texture,
   },
@@ -21,8 +19,6 @@ use crate::{
 };
 
 pub struct Engine {
-  pub data_pipeline: ShaderPipeline,
-
   #[allow(unused)]
   pub data_bindgroups: raw_bindgroups::BindGroups,
   pub texture_bundle: texture::TextureBundle,
@@ -68,11 +64,10 @@ impl Engine {
     let mut data_bindgroups = raw_bindgroups::BindGroups::new();
     let drivers = device_drivers::Drivers::new(window.clone()).await;
 
-    let mut texture_bundle =
+    let texture_bundle =
       texture::TextureBundle::new(&drivers).expect("failed to load texture bundle");
 
-    let render_task =
-      render::RenderTask::new(&drivers, &mut texture_bundle).expect("failed to load rendertask");
+    let render_task = render::RenderTask::new().expect("failed to load rendertask");
 
     let loop_group = LoopGroup::new(Duration::from_secs_f64(1.0));
 
@@ -84,7 +79,6 @@ impl Engine {
     data_bindgroups.add_bind(cam.camera_bind_group_layout.clone());
     data_bindgroups.add_bind(gpu_time.layout.clone());
 
-    let data_pipeline = ShaderPipeline::new(&data_bindgroups, &drivers).await.unwrap();
     let task_service = tasks::TaskService::new(translate_surface::SyncWindow(window.clone()));
     let tickrate = tickrate::Tickrate::new();
 
@@ -94,7 +88,6 @@ impl Engine {
       render_task,
       texture_bundle,
       data_bindgroups,
-      data_pipeline,
       camera: cam,
       task_service,
       tickrate,

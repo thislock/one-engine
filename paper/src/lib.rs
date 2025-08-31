@@ -1,8 +1,12 @@
 use std::sync::Arc;
 extern crate sdl3;
-use sdl3::{event::{Event, WindowEvent}, keyboard::Keycode};
+use sdl3::{
+  event::{Event, WindowEvent},
+};
 
-use crate::{gpu::shader_pipeline, window::{sdl_handle::SdlHandle, tickrate, user_input::MovementHandler}};
+use crate::{
+  gpu::object::Object, window::{sdl_handle::SdlHandle, tickrate, user_input::MovementHandler}
+};
 
 mod files;
 mod maths;
@@ -43,6 +47,9 @@ pub async fn run_engine() -> anyhow::Result<()> {
 
   let mut benchmark = tickrate::TimeMeasurer::new();
 
+  let object = Object::from_obj_file(&mut engine.texture_bundle, &engine.drivers, "test.obj")?;
+  engine.render_task.add_object(object, &engine.drivers, &engine.data_bindgroups).await?;
+
   while engine.is_running() {
     benchmark.start_measure();
 
@@ -51,20 +58,6 @@ pub async fn run_engine() -> anyhow::Result<()> {
     for event in sdl_handle.event_pump.poll_iter() {
       handle_system_events(&event, &mut sys_window, &mut engine);
       MovementHandler::poll_movement(&mut engine, &mut movement_buffer, &event);
-      match event {
-        Event::KeyDown { keycode, .. } => {
-          if let Some(key) = keycode {
-            match key {
-              Keycode::_0 => {
-                println!("recompiled shaders");
-                shader_pipeline::ShaderPipeline::recompile_shaders(&mut engine).await?;
-              },
-              _=>{}
-            }
-          }
-        },
-        _ => {},
-      }      
     }
     MovementHandler::apply_movement(&mut engine, &mut movement_buffer);
 

@@ -1,5 +1,7 @@
 use crate::gpu::geometry::VertexTrait;
 
+// basically unused code, because i hate instances
+
 pub struct Instance {
   pub pos: cgmath::Vector3<f32>,
   pub rot: cgmath::Quaternion<f32>,
@@ -13,6 +15,7 @@ impl Instance {
   }
 }
 
+#[allow(unused)]
 impl VertexTrait for Instance {
   fn as_bytes(&self) -> Vec<u8> {
     // TODO: make this actually do something.

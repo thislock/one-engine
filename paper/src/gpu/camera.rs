@@ -2,7 +2,7 @@ use cgmath::{InnerSpace, Vector3};
 use wgpu::util::DeviceExt;
 
 use crate::{
-  gpu::{camera_uniform, object},
+  gpu::{object},
   maths,
   window::user_input::InputType,
 };
@@ -15,6 +15,27 @@ pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::from_co
   cgmath::Vector4::new(0.0, 0.0, 0.5, 0.0),
   cgmath::Vector4::new(0.0, 0.0, 0.5, 1.0),
 );
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct CameraUniform {
+  // We can't use cgmath with bytemuck directly, so we'll have
+  // to convert the Matrix4 into a 4x4 f32 array
+  view_proj: [[f32; 4]; 4],
+}
+
+impl CameraUniform {
+  pub fn new() -> Self {
+    use cgmath::SquareMatrix;
+    Self {
+      view_proj: cgmath::Matrix4::identity().into(),
+    }
+  }
+
+  pub fn update_view_proj(&mut self, camera: &Camera) {
+    self.view_proj = camera.build_view_projection_matrix().into();
+  }
+}
 
 pub struct Camera {
   pub position: cgmath::Point3<f32>,
@@ -107,7 +128,7 @@ impl Camera {
 
 pub struct GpuCamera {
   pub camera: Camera,
-  pub camera_uniform: camera_uniform::CameraUniform,
+  pub camera_uniform: CameraUniform,
   pub camera_buffer: wgpu::Buffer,
   pub camera_bind_group: wgpu::BindGroup,
   pub camera_bind_group_layout: wgpu::BindGroupLayout,
@@ -118,7 +139,7 @@ impl GpuCamera {
     let default_camera_position = cgmath::Point3::new(0.0, 3.0, 1.0);
     let camera = Camera::new(default_camera_position, 45.0, size);
 
-    let mut camera_uniform = camera_uniform::CameraUniform::new();
+    let mut camera_uniform = CameraUniform::new();
     camera_uniform.update_view_proj(&camera);
 
     let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {

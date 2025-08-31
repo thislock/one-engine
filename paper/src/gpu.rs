@@ -1,12 +1,10 @@
 pub mod camera;
-pub mod camera_uniform;
 pub mod device_drivers;
 pub mod geometry;
 pub mod instances;
 pub mod object;
-pub mod shader_pipeline;
 pub mod raw_bindgroups;
 pub mod render;
+pub mod shaders;
 pub mod sync_data;
 pub mod texture;
-pub mod materials;

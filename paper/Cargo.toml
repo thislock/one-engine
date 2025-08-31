@@ -4,17 +4,25 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+### quality of life
 anyhow = "1.0.98"
-bytemuck = "1.23.1"
-cgmath = "0.18.0"
 env_logger = "0.11.8"
-image = "0.25.6"
 log = "0.4.27"
 pollster = "0.4.0"
-rand = "0.9.1"
+bytemuck = "1.23.1"
 rayon = "1.10.0"
-sdl3 = {version = "0.14.36", features = ["raw-window-handle"]}
+
+### engine essentials
+# weird file loading
+image = "0.25.6"
+tobj = "4.0.3"
+# math addiction
+uuid = { version = "1", features = ["v4"] } # v4 = random UUIDs
+cgmath = "0.18.0"
+rand = "0.9.1"
+# i forgot what this does
 strum = "0.27.2"
 strum_macros = "0.27.2"
-tobj = "4.0.3"
+# visuals
+sdl3 = {version = "0.14.36", features = ["raw-window-handle"]}
 wgpu = "24.0.5"
