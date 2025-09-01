@@ -39,6 +39,24 @@ fn handle_system_events(
   }
 }
 
+async fn init_objects(e: &mut engine::Engine) -> anyhow::Result<()> {
+  e.texture_bundle
+    .add_texture_from_file(&e.drivers, "detail.png", "test")?;
+
+  let diffuse = e.texture_bundle.get_texture_bind("test");
+
+  let object = ObjectBuilder::new()
+    .load_meshes_from_objfile(&e.texture_bundle, &e.drivers, "test.obj")?
+    .add_diffuse_texture(diffuse.clone())
+    .build();
+
+  e.render_task
+    .add_object(object, &e.drivers, &e.data_bindgroups)
+    .await?;
+
+  Ok(())
+}
+
 pub async fn run_engine() -> anyhow::Result<()> {
   let mut sdl_handle = SdlHandle::new()?;
   let mut engine = engine::Engine::new(&sdl_handle, sdl_handle.sdl_window.clone()).await;
@@ -48,18 +66,7 @@ pub async fn run_engine() -> anyhow::Result<()> {
 
   let mut benchmark = tickrate::TimeMeasurer::new();
 
-  engine
-    .texture_bundle
-    .add_texture_from_file(&engine.drivers, "detail.png", "test")?;
-  let diffuse = engine.texture_bundle.get_texture_bind("test");
-  let object = ObjectBuilder::new()
-    .load_meshes_from_objfile(&engine.texture_bundle, &engine.drivers, "test.obj")?
-    .add_diffuse_texture(diffuse.clone())
-    .build();
-  engine
-    .render_task
-    .add_object(object, &engine.drivers, &engine.data_bindgroups)
-    .await?;
+  init_objects(&mut engine).await?;
 
   while engine.is_running() {
     benchmark.start_measure();

@@ -50,32 +50,6 @@ impl DynamicTexture {
     }
   }
 
-  fn init_texure_bindgroup_layout(drivers: &Drivers) -> BindGroupLayout {
-    drivers
-      .device
-      .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        entries: &[
-          wgpu::BindGroupLayoutEntry {
-            binding: 0,
-            visibility: wgpu::ShaderStages::FRAGMENT,
-            ty: wgpu::BindingType::Texture {
-              multisampled: false,
-              view_dimension: wgpu::TextureViewDimension::D2,
-              sample_type: wgpu::TextureSampleType::Depth {},
-            },
-            count: None,
-          },
-          wgpu::BindGroupLayoutEntry {
-            binding: 1,
-            visibility: wgpu::ShaderStages::FRAGMENT,
-            ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-            count: None,
-          },
-        ],
-        label: Some("dynamic_texture_bind_group_layout"),
-      })
-  }
-
   fn get_sampler(drivers: &Drivers) -> wgpu::Sampler {
     let sampler = drivers.device.create_sampler(&wgpu::SamplerDescriptor {
       address_mode_u: wgpu::AddressMode::ClampToEdge,
@@ -334,7 +308,7 @@ impl TextureBundle {
     stored_name: &str,
   ) -> Result<(), anyhow::Error> {
     let texture_data = files::load_image_bytes(file_name)?;
-    self.add_texture(drivers, &texture_data, stored_name);
+    self.add_texture(drivers, &texture_data, stored_name)?;
     Ok(())
   }
 }

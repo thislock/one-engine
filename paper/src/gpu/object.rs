@@ -113,7 +113,7 @@ impl Object {
     self
       .meshes
       .into_iter()
-      .map(|mesh| extracted.push((*mesh).clone()));
+      .for_each(|mesh| extracted.push((*mesh).clone()));
     return extracted;
   }
 
@@ -129,8 +129,9 @@ impl Object {
     let obj_reader = BufReader::new(obj_cursor);
 
     let (models, obj_materials) = Self::get_file_info(obj_reader)?;
+    let obj_materials = obj_materials?;
 
-    Self::load_materials(drivers, obj_materials)?;
+    Self::load_materials(obj_materials)?;
 
     let meshes = Self::load_meshes(texture_bundle, drivers, models);
 
@@ -171,14 +172,11 @@ impl Object {
     vertices
   }
 
-  fn load_materials(
-    drivers: &Drivers,
-    obj_materials: Result<Vec<tobj::Material>, tobj::LoadError>,
-  ) -> anyhow::Result<()> {
-    for m in obj_materials? {
-      let diffuse_texture_name = m
-        .diffuse_texture
-        .expect("FAILED TO GET DIFFUSE TEXTURE NAME");
+  /// basically does nothing right now
+  #[allow(unused)]
+  fn load_materials(obj_materials: Vec<tobj::Material>) -> anyhow::Result<()> {
+    for m in obj_materials {
+      let diffuse_texture_name = m.diffuse_texture;
     }
 
     Ok(())
