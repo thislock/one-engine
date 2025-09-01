@@ -4,7 +4,7 @@ use anyhow::{Error, Ok};
 use image::GenericImageView;
 use wgpu::{BindGroup, BindGroupLayout};
 
-use crate::gpu::device_drivers::Drivers;
+use crate::{files, gpu::device_drivers::Drivers};
 
 #[derive(Clone)]
 pub struct DynamicTexture {
@@ -61,7 +61,7 @@ impl DynamicTexture {
             ty: wgpu::BindingType::Texture {
               multisampled: false,
               view_dimension: wgpu::TextureViewDimension::D2,
-              sample_type: wgpu::TextureSampleType::Depth {  },
+              sample_type: wgpu::TextureSampleType::Depth {},
             },
             count: None,
           },
@@ -91,7 +91,6 @@ impl DynamicTexture {
     });
     sampler
   }
-
 }
 
 pub struct ImageTexture {
@@ -236,11 +235,15 @@ pub struct TextureBundle {
 }
 
 impl TextureBundle {
+  pub fn get_fallback_texture(&self) -> Arc<ImageTexture> {
+    return self.fallback_texture.clone();
+  }
+
   pub fn get_texture_bind_group(&self) -> &BindGroupLayout {
     return &self.texture_bind_group_layout;
   }
 
-  pub fn get_diffuse_bind_group(&self, label: &str) -> &BindGroup {
+  pub fn get_texture_bind(&self, label: &str) -> &BindGroup {
     let label = String::from(label);
     if self.image_textures.contains_key(&label) {
       return &self.image_textures.get(&label).unwrap().diffuse_bind_group;
@@ -309,12 +312,7 @@ impl TextureBundle {
     })
   }
 
-  pub fn add_texture(
-    &mut self,
-    drivers: &Drivers,
-    bytes: &[u8],
-    label: &str,
-  ) -> anyhow::Result<()> {
+  fn add_texture(&mut self, drivers: &Drivers, bytes: &[u8], label: &str) -> anyhow::Result<()> {
     let label = String::from(label);
 
     if self.image_textures.contains_key(&label) {
@@ -327,5 +325,16 @@ impl TextureBundle {
     self.image_textures.insert(label, Arc::new(tex));
 
     return Ok(());
+  }
+
+  pub fn add_texture_from_file(
+    &mut self,
+    drivers: &Drivers,
+    file_name: &str,
+    stored_name: &str,
+  ) -> Result<(), anyhow::Error> {
+    let texture_data = files::load_image_bytes(file_name)?;
+    self.add_texture(drivers, &texture_data, stored_name);
+    Ok(())
   }
 }

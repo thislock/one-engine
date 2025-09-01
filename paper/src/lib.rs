@@ -5,7 +5,7 @@ use sdl3::{
 };
 
 use crate::{
-  gpu::object::Object,
+  gpu::object::{ObjectBuilder},
   window::{sdl_handle::SdlHandle, tickrate, user_input::MovementHandler},
 };
 
@@ -48,7 +48,14 @@ pub async fn run_engine() -> anyhow::Result<()> {
 
   let mut benchmark = tickrate::TimeMeasurer::new();
 
-  let object = Object::from_obj_file(&mut engine.texture_bundle, &engine.drivers, "test.obj")?;
+  engine
+    .texture_bundle
+    .add_texture_from_file(&engine.drivers, "detail.png", "test")?;
+  let diffuse = engine.texture_bundle.get_texture_bind("test");
+  let object = ObjectBuilder::new()
+    .load_meshes_from_objfile(&engine.texture_bundle, &engine.drivers, "test.obj")?
+    .add_diffuse_texture(diffuse.clone())
+    .build();
   engine
     .render_task
     .add_object(object, &engine.drivers, &engine.data_bindgroups)

@@ -1,6 +1,4 @@
-use std::sync::Arc;
-use crate::gpu::texture::ImageTexture;
-
+#[derive(Clone)]
 pub struct Material {
   pub diffuse_texture: wgpu::BindGroup,
 }

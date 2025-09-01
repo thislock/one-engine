@@ -1,11 +1,12 @@
 use std::ffi::OsStr;
+use std::io::{BufReader, Cursor};
 use std::sync::Arc;
 
 use crate::files::{self, load_obj_str};
-use crate::gpu;
 use crate::gpu::device_drivers::Drivers;
-use crate::gpu::geometry::{Mesh, MeshBuilder, ModelVertex, Vertex, VertexTrait};
+use crate::gpu::geometry::{ModelVertex, Vertex, VertexTrait};
 use crate::gpu::texture::TextureBundle;
+use crate::gpu::{geometry, material};
 use crate::maths::Vec3;
 
 pub type Rot = cgmath::Quaternion<f32>;
@@ -25,7 +26,7 @@ trait Object3D {
 }
 
 pub struct Object {
-  pub meshes: Vec<Arc<Mesh>>,
+  pub meshes: Vec<Arc<geometry::Mesh>>,
 
   pub global_pos: Vec3,
   pub global_rot: Rot,
@@ -45,41 +46,95 @@ fn load_string(file_name: &str) -> anyhow::Result<String> {
   return Ok(str);
 }
 
+pub struct ObjectBuilder {
+  meshes: Vec<geometry::Mesh>,
+
+  diffuse: Option<wgpu::BindGroup>,
+
+  global_pos: Option<Vec3>,
+  global_rot: Option<Rot>,
+}
+
+impl ObjectBuilder {
+  fn when_some<T>(possible: Option<T>, mut logic: impl FnMut(T)) {
+    if let Some(real) = possible {
+      return logic(real);
+    }
+  }
+
+  fn arcify_vec<T>(vector: Vec<T>) -> Vec<Arc<T>> {
+    vector.into_iter().map(Arc::new).collect()
+  }
+
+  pub fn new() -> Self {
+    Self {
+      meshes: Vec::new(),
+      diffuse: None,
+      global_pos: None,
+      global_rot: None,
+    }
+  }
+
+  pub fn add_diffuse_texture(mut self, diffuse: wgpu::BindGroup) -> Self {
+    self.diffuse = Some(diffuse);
+    self
+  }
+
+  pub fn load_meshes_from_objfile(
+    mut self,
+    texture_bundle: &TextureBundle,
+    drivers: &Drivers,
+    file_name: &str,
+  ) -> anyhow::Result<Self> {
+    let object = Object::from_obj_file(texture_bundle, drivers, file_name)?;
+    self.meshes.extend(object);
+    Ok(self)
+  }
+
+  pub fn build(mut self) -> Object {
+    Self::when_some(self.diffuse, |diffuse_bind| {
+      let material = material::Material::new_basic(diffuse_bind);
+      self.meshes.iter_mut().for_each(|mesh| {
+        mesh.change_material(material.clone());
+      });
+    });
+
+    Object {
+      meshes: Self::arcify_vec(self.meshes),
+      global_pos: Object::DEFAULT_POSITION,
+      global_rot: Object::DEFAULT_ROTATION,
+    }
+  }
+}
+
 impl Object {
-  pub fn from_obj_file(
-    texture_bundle: &mut TextureBundle,
+  pub fn extract_meshes(self) -> Vec<geometry::Mesh> {
+    let mut extracted = Vec::with_capacity(self.meshes.capacity());
+    self
+      .meshes
+      .into_iter()
+      .map(|mesh| extracted.push((*mesh).clone()));
+    return extracted;
+  }
+
+  fn from_obj_file(
+    texture_bundle: &TextureBundle,
     drivers: &Drivers,
     filename: &str,
-  ) -> anyhow::Result<Self> {
+  ) -> anyhow::Result<Vec<geometry::Mesh>> {
     use std::io::{BufReader, Cursor};
 
     let obj_text = files::load_obj_str(filename)?;
     let obj_cursor = Cursor::new(obj_text);
-    let mut obj_reader = BufReader::new(obj_cursor);
+    let obj_reader = BufReader::new(obj_cursor);
 
-    let (models, obj_materials) = tobj::load_obj_buf(
-      &mut obj_reader,
-      &tobj::LoadOptions {
-        triangulate: true,
-        single_index: true,
-        ..Default::default()
-      },
-      move |p| {
-        let filename = OsStr::to_str(p.file_name().unwrap()).unwrap();
-        let mat_text = load_string(filename).unwrap();
-        tobj::load_mtl_buf(&mut BufReader::new(Cursor::new(mat_text)))
-      },
-    )?;
+    let (models, obj_materials) = Self::get_file_info(obj_reader)?;
 
-    Self::load_materials(texture_bundle, drivers, obj_materials)?;
+    Self::load_materials(drivers, obj_materials)?;
 
     let meshes = Self::load_meshes(texture_bundle, drivers, models);
 
-    Ok(Self {
-      meshes,
-      global_pos: Self::DEFAULT_POSITION,
-      global_rot: Self::DEFAULT_ROTATION,
-    })
+    Ok(meshes)
   }
 
   fn obj_to_vertexes(m: &tobj::Model) -> Vec<Box<dyn VertexTrait>> {
@@ -117,41 +172,66 @@ impl Object {
   }
 
   fn load_materials(
-    texture_bundle: &mut TextureBundle,
     drivers: &Drivers,
     obj_materials: Result<Vec<tobj::Material>, tobj::LoadError>,
-  ) -> Result<(), anyhow::Error> {
-    Ok(for m in obj_materials? {
+  ) -> anyhow::Result<()> {
+    for m in obj_materials? {
       let diffuse_texture_name = m
         .diffuse_texture
         .expect("FAILED TO GET DIFFUSE TEXTURE NAME");
-      println!("{}", diffuse_texture_name);
-      let diffuse_texture_bytes = files::load_image_bytes(&diffuse_texture_name)?;
-      texture_bundle.add_texture(drivers, &diffuse_texture_bytes, &diffuse_texture_name)?;
-    })
+    }
+
+    Ok(())
   }
 
   fn load_meshes(
-    texture_bundle: &mut TextureBundle,
+    texture_bundle: &TextureBundle,
     drivers: &Drivers,
     models: Vec<tobj::Model>,
-  ) -> Vec<Arc<Mesh>> {
+  ) -> Vec<geometry::Mesh> {
     let meshes = models
       .into_iter()
       .map(|m| {
         let vertices = Self::obj_to_vertexes(&m);
 
-        let material = gpu::material::Material::new_basic(
-          texture_bundle.get_diffuse_bind_group("").clone()
-        );
+        let fallback_texture_binds = texture_bundle
+          .get_fallback_texture()
+          .diffuse_bind_group
+          .clone();
+        let material = material::Material::new_basic(fallback_texture_binds);
 
-        let mesh = MeshBuilder::new(vertices, m.mesh.indices)
+        let mesh = geometry::MeshBuilder::new(vertices, m.mesh.indices)
           .build(drivers, material)
           .unwrap();
 
-        Arc::new(mesh)
+        mesh
       })
       .collect::<Vec<_>>();
     meshes
+  }
+
+  fn get_file_info(
+    mut obj_reader: std::io::BufReader<std::io::Cursor<String>>,
+  ) -> Result<
+    (
+      Vec<tobj::Model>,
+      Result<Vec<tobj::Material>, tobj::LoadError>,
+    ),
+    anyhow::Error,
+  > {
+    let (models, obj_materials) = tobj::load_obj_buf(
+      &mut obj_reader,
+      &tobj::LoadOptions {
+        triangulate: true,
+        single_index: true,
+        ..Default::default()
+      },
+      move |p| {
+        let filename = OsStr::to_str(p.file_name().unwrap()).unwrap();
+        let mat_text = load_string(filename).unwrap();
+        tobj::load_mtl_buf(&mut BufReader::new(Cursor::new(mat_text)))
+      },
+    )?;
+    Ok((models, obj_materials))
   }
 }

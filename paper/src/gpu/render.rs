@@ -4,7 +4,7 @@ use wgpu::RenderPass;
 use crate::{
   engine,
   gpu::{
-    device_drivers,
+    device_drivers, geometry,
     object::Object,
     raw_bindgroups,
     shaders::{ShaderBuilder, ShaderBundle, ShaderPipeline},
@@ -59,11 +59,10 @@ impl RenderTask {
   }
 
   fn render_buffers(&self, mut render_pass: RenderPass<'_>, engine: &engine::Engine) {
+    // loop through each shader, and render it's corresponding objects.
     for shader in self.shaders.iter_shaders() {
       render_pass.set_pipeline(&shader.render_pipeline);
-      for mesh in &shader.meshes {
-        mesh.render_mesh(&mut render_pass, engine);
-      }
+      geometry::Mesh::render_meshes(&shader.meshes, &mut render_pass, engine);
     }
   }
 

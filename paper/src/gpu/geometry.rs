@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use wgpu::{util::DeviceExt, RenderPass, VertexBufferLayout};
 use crate::{
   engine,
@@ -93,6 +95,7 @@ impl MeshBuilder {
   }
 }
 
+#[derive(Clone)]
 pub struct Mesh {
   vertex_buffer: wgpu::Buffer,
   index_buffer: wgpu::Buffer,
@@ -101,6 +104,10 @@ pub struct Mesh {
 }
 
 impl Mesh {
+  pub fn change_material(&mut self, new_material: Material) {
+    self.material = new_material;
+  }
+
   fn create_vertex_buffer(mesh_builder: &MeshBuilder, device: &wgpu::Device) -> wgpu::Buffer {
     let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
       label: Some("Vertex Buffer"),
@@ -167,41 +174,69 @@ impl Mesh {
     }
   }
 
-  const TEXTURE_BINDGROUP: u32 = 0;
-  const CAMERA_TRANSFORM_BINDGROUP: u32 = 1;
-  const TIME_BINDGROUP: u32 = 2;
-
-  pub fn render_mesh(&self, render_pass: &mut RenderPass<'_>, engine: &engine::Engine) {
-    render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-    render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-
+  fn set_bind_groups(&self, render_pass: &mut RenderPass<'_>, engine: &engine::Engine) {
     // set the diffuse texture
-    render_pass.set_bind_group(
-      Self::TEXTURE_BINDGROUP,
-      &self.material.diffuse_texture,
-      &[],
-    );
-    // camera transform
+    render_pass.set_bind_group(Self::TEXTURE_BINDGROUP, &self.material.diffuse_texture, &[]);
+
+    // set the camera transform
     render_pass.set_bind_group(
       Self::CAMERA_TRANSFORM_BINDGROUP,
       &engine.camera.camera_bind_group,
       &[],
     );
-    // time
+
+    // current time
     render_pass.set_bind_group(Self::TIME_BINDGROUP, &engine.gpu_time.bindgroup, &[]);
+  }
 
-    let instance_range = 0..1;
-    // if let Some(instance) = &self.instance_buffer {
-    //   render_pass.set_vertex_buffer(1, instance.slice(..));
-    //   render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-    //   unsafe { instance_range = 0..self.instances.as_ref().unwrap_unchecked().len() as _; }
-    // } else {
-    //   // this fix makes it not crash if there isnt instances, but its absolitely amazingly stupid to leave it like this
-    //   render_pass.set_vertex_buffer(1, self.vertex_buffer.slice(..));
-    //   render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-    //   instance_range = 0..1;
-    // }
+  fn set_geometry_buffers(&self, render_pass: &mut RenderPass<'_>) {
+    render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+    render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+  }
 
-    render_pass.draw_indexed(0..self.num_indicies, 0, instance_range);
+  fn submit_for_rendering(&self, render_pass: &mut RenderPass<'_>) {
+    render_pass.draw_indexed(0..self.num_indicies, 0, 0..1);
+  }
+
+  const TEXTURE_BINDGROUP: u32 = 0;
+  const CAMERA_TRANSFORM_BINDGROUP: u32 = 1;
+  const TIME_BINDGROUP: u32 = 2;
+
+  pub fn render_meshes(
+    meshes: &Vec<Arc<Self>>,
+    render_pass: &mut RenderPass<'_>,
+    engine: &engine::Engine,
+  ) {
+    // will need to remove later, for now everything shares bindgroups, so i don't need to set it every time
+    if meshes.get(0).is_none() {
+      return;
+    }
+    let mesh1 = meshes.get(0).unwrap();
+    mesh1.set_bind_groups(render_pass, engine);
+
+    for mesh in meshes {
+      mesh.set_geometry_buffers(render_pass);
+      mesh.submit_for_rendering(render_pass);
+    }
+  }
+
+  pub fn render_mesh(&self, render_pass: &mut RenderPass<'_>, engine: &engine::Engine) {
+    self.set_geometry_buffers(render_pass);
+    self.set_bind_groups(render_pass, engine);
+    self.submit_for_rendering(render_pass);
   }
 }
+
+// leaving this dead instance code here
+
+// let instance_range = 0..1;
+// if let Some(instance) = &self.instance_buffer {
+//   render_pass.set_vertex_buffer(1, instance.slice(..));
+//   render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+//   unsafe { instance_range = 0..self.instances.as_ref().unwrap_unchecked().len() as _; }
+// } else {
+//   // this fix makes it not crash if there isnt instances, but its absolitely amazingly stupid to leave it like this
+//   render_pass.set_vertex_buffer(1, self.vertex_buffer.slice(..));
+//   render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+//   instance_range = 0..1;
+// }
