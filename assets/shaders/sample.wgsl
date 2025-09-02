@@ -3,17 +3,6 @@
 fn vs_main(
     model: VertexInput,
 ) -> VertexOutput {
-
-    let angle = time.time_secs;
-    let cos_theta = cos(angle);
-    let sin_theta = sin(angle);
-    // let rotation_z = mat4x4<f32>(
-    //     vec4<f32>( cos_theta, 0.0, sin_theta, 0.0),
-    //     vec4<f32>(       0.0, 1.0, 0.0,       0.0),
-    //     vec4<f32>(-sin_theta, 0.0, cos_theta, 0.0),
-    //     vec4<f32>(       0.0, 0.0, 0.0,       1.0)
-    // );
-
     var out: VertexOutput;
     out.clip_position = get_camera_projection(model);
     out.tex_coords = model.tex_coords;

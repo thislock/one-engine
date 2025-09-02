@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::ffi::OsStr;
 use std::io::{BufReader, Cursor};
 use std::sync::Arc;
@@ -6,7 +7,7 @@ use crate::files::{self, load_obj_str};
 use crate::gpu::device_drivers::Drivers;
 use crate::gpu::geometry::{ModelVertex, Vertex, VertexTrait};
 use crate::gpu::texture::TextureBundle;
-use crate::gpu::{geometry, material};
+use crate::gpu::{material, mesh};
 use crate::maths::Vec3;
 
 pub type Rot = cgmath::Quaternion<f32>;
@@ -25,19 +26,94 @@ trait Object3D {
   fn get_rot(&self) -> &Rot;
 }
 
-pub struct Object {
-  pub meshes: Vec<Arc<geometry::Mesh>>,
+#[repr(C)]
+#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+// aligned to 16 bytes
+pub struct LocationUniform {
+  location_projection: [[f32; 4]; 4],
+}
 
-  pub global_pos: Vec3,
-  pub global_rot: Rot,
+#[derive(Clone, Copy)]
+pub struct Location {
+  pub pos: Vec3,
+  pub rot: Rot,
+}
+
+impl Location {
+
+  pub fn to_uniform(&self) -> LocationUniform {
+    use cgmath::Matrix4;
+
+    // convert quaternion into a rotation matrix
+    let rot_mat: Matrix4<f32> = Matrix4::from(self.rot);
+    
+    // make a translation matrix
+    let trans_mat = Matrix4::from_translation(self.pos);
+    
+    // combine them: translate * rotate (scale can go here too if needed)
+    let model = trans_mat * rot_mat;
+
+    // convert into [[f32; 4]; 4] for uniforms
+    LocationUniform { location_projection: model.into() }
+  }
+
+  #[inline]
+  pub fn new_world_origin() -> Self {
+    Self { pos: Object::DEFAULT_POSITION, rot: Object::DEFAULT_ROTATION }
+  }
+  
+  #[inline]
+  pub fn from_pos(pos: Vec3) -> Self {
+    Self { pos, rot: Object::DEFAULT_ROTATION }
+  }
+
+  #[inline]
+  pub fn to_shared(self) -> SharedLocation {
+    SharedLocation { last_known: self.clone(), shared_known: Arc::new(RefCell::new(self)) }
+  }
+
+}
+
+#[derive(Clone)]
+pub struct SharedLocation {
+  last_known: Location,
+  shared_known: Arc<RefCell<Location>>,
+}
+
+impl SharedLocation {
+
+  pub fn inc_x(&mut self) {
+    self.shared_known.borrow_mut().pos.x += 100.0;
+  }
+
+  #[inline]
+  pub fn from_location(location: Location) -> Self {
+    location.to_shared()
+  }
+
+  pub fn get_location<'a>(&'a self) -> &'a Location {
+    // this causes a race condition, but i do not care. it seriously doesn't matter for this sort of thing.
+    let loc_possible = unsafe { self.shared_known.try_borrow_unguarded() };
+    if let Ok(location) = loc_possible {
+      return location;
+    } else {
+      return &self.last_known;
+    }
+  }
+
+}
+
+pub struct Object {
+  pub meshes: Vec<Arc<mesh::Mesh>>,
+  pub shared_location: SharedLocation,
 }
 
 impl Object3D for Object {
   fn get_pos(&self) -> &Vec3 {
-    return &self.global_pos;
+    return &self.shared_location.get_location().pos;
   }
   fn get_rot(&self) -> &Rot {
-    return &self.global_rot;
+    return &self.shared_location.get_location().rot;
   }
 }
 
@@ -47,12 +123,11 @@ fn load_string(file_name: &str) -> anyhow::Result<String> {
 }
 
 pub struct ObjectBuilder {
-  meshes: Vec<geometry::Mesh>,
+  meshes: Vec<mesh::Mesh>,
 
   diffuse: Option<wgpu::BindGroup>,
 
-  global_pos: Option<Vec3>,
-  global_rot: Option<Rot>,
+  global_location: SharedLocation,
 }
 
 impl ObjectBuilder {
@@ -70,13 +145,22 @@ impl ObjectBuilder {
     Self {
       meshes: Vec::new(),
       diffuse: None,
-      global_pos: None,
-      global_rot: None,
+      global_location: Location::new_world_origin().to_shared(),
     }
   }
 
   pub fn add_diffuse_texture(mut self, diffuse: wgpu::BindGroup) -> Self {
     self.diffuse = Some(diffuse);
+    self
+  }
+
+  pub fn set_location(mut self, location: Location) -> Self {
+    self.global_location = location.to_shared();
+    self
+  }
+
+  pub fn set_shared_location(mut self, location: SharedLocation) -> Self {
+    self.global_location = location;
     self
   }
 
@@ -86,7 +170,8 @@ impl ObjectBuilder {
     drivers: &Drivers,
     file_name: &str,
   ) -> anyhow::Result<Self> {
-    let object = Object::from_obj_file(texture_bundle, drivers, file_name)?;
+    let shared_location = self.global_location.clone();
+    let object = Object::from_obj_file(texture_bundle, drivers, file_name, &shared_location)?;
     self.meshes.extend(object);
     Ok(self)
   }
@@ -101,14 +186,14 @@ impl ObjectBuilder {
 
     Object {
       meshes: Self::arcify_vec(self.meshes),
-      global_pos: Object::DEFAULT_POSITION,
-      global_rot: Object::DEFAULT_ROTATION,
+      shared_location: Location::new_world_origin().to_shared()
     }
   }
 }
 
 impl Object {
-  pub fn extract_meshes(self) -> Vec<geometry::Mesh> {
+
+  pub fn extract_meshes(self) -> Vec<mesh::Mesh> {
     let mut extracted = Vec::with_capacity(self.meshes.capacity());
     self
       .meshes
@@ -121,7 +206,8 @@ impl Object {
     texture_bundle: &TextureBundle,
     drivers: &Drivers,
     filename: &str,
-  ) -> anyhow::Result<Vec<geometry::Mesh>> {
+    shared_location: &SharedLocation,
+  ) -> anyhow::Result<Vec<mesh::Mesh>> {
     use std::io::{BufReader, Cursor};
 
     let obj_text = files::load_obj_str(filename)?;
@@ -133,7 +219,7 @@ impl Object {
 
     Self::load_materials(obj_materials)?;
 
-    let meshes = Self::load_meshes(texture_bundle, drivers, models);
+    let meshes = Self::load_meshes(texture_bundle, drivers, models, shared_location);
 
     Ok(meshes)
   }
@@ -186,7 +272,8 @@ impl Object {
     texture_bundle: &TextureBundle,
     drivers: &Drivers,
     models: Vec<tobj::Model>,
-  ) -> Vec<geometry::Mesh> {
+    shared_location: &SharedLocation
+  ) -> Vec<mesh::Mesh> {
     let meshes = models
       .into_iter()
       .map(|m| {
@@ -198,8 +285,8 @@ impl Object {
           .clone();
         let material = material::Material::new_basic(fallback_texture_binds);
 
-        let mesh = geometry::MeshBuilder::new(vertices, m.mesh.indices)
-          .build(drivers, material)
+        let mesh = mesh::MeshBuilder::new(vertices, m.mesh.indices)
+          .build(drivers, material, shared_location.clone())
           .unwrap();
 
         mesh

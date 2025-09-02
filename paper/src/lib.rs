@@ -5,7 +5,7 @@ use sdl3::{
 };
 
 use crate::{
-  window::{sdl_handle::SdlHandle, tickrate, user_input::MovementHandler},
+  gpu::object::{Location, ObjectBuilder, SharedLocation}, maths::Vec3, window::{sdl_handle::SdlHandle, tickrate, user_input::MovementHandler}
 };
 
 pub mod files;
@@ -15,7 +15,6 @@ pub mod maths;
 pub mod engine;
 
 pub mod gpu;
-pub mod tasks;
 pub mod window;
 
 fn handle_system_events(
@@ -43,6 +42,25 @@ pub struct EngineRuntime {
   pub engine: engine::Engine,
 }
 
+async fn init_objects(e: &mut engine::Engine, shared: &SharedLocation) -> anyhow::Result<()> {
+  e.texture_bundle
+    .add_texture_from_file(&e.drivers, "test_bake.png", "test")?;
+
+  let diffuse = e.texture_bundle.get_texture_bind("test");
+
+  let object = ObjectBuilder::new()
+    .set_shared_location(shared.clone())
+    .load_meshes_from_objfile(&e.texture_bundle, &e.drivers, "test_bake_table.obj")?
+    .add_diffuse_texture(diffuse.clone())
+    .build();
+
+  e.render_task
+    .add_object(object, &e.drivers, &e.data_bindgroups)
+    .await?;
+
+  Ok(())
+}
+
 impl EngineRuntime {
   pub async fn new_engine() -> anyhow::Result<Self> {
     let sdl_handle = SdlHandle::new()?;
@@ -59,8 +77,14 @@ impl EngineRuntime {
 
     let mut benchmark = tickrate::TimeMeasurer::new();
 
+    let mut shared = Location::from_pos(Vec3::new(100.0, 0.0, 0.0)).to_shared();
+
+    init_objects(&mut self.engine, &shared).await?;
+
     while self.engine.is_running() {
       benchmark.start_measure();
+
+      shared.inc_x();
 
       movement_buffer.clear();
 

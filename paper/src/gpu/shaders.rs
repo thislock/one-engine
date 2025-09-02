@@ -1,8 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use crate::{
-  gpu::{device_drivers::Drivers, geometry},
-};
+use crate::gpu::{device_drivers::Drivers, geometry, mesh};
 #[allow(unused)]
 use crate::gpu::{
   device_drivers,
@@ -59,7 +57,7 @@ impl ShaderBuilder {
 
 pub struct ShaderPipeline {
   pub render_pipeline: wgpu::RenderPipeline,
-  pub meshes: Vec<Arc<geometry::Mesh>>,
+  pub meshes: Vec<Arc<mesh::Mesh>>,
 }
 
 impl ShaderPipeline {

@@ -2,7 +2,7 @@
 
 use std::{
   sync::Arc,
-  time::{self, Duration},
+  time,
 };
 
 use crate::{
@@ -10,10 +10,6 @@ use crate::{
     camera, device_drivers, raw_bindgroups, render,
     sync_data::{self, GpuTime},
     texture,
-  },
-  tasks::{
-    init_tasks,
-    tasks::{self, LoopGroup},
   },
   window::{sdl_handle::SdlHandle, tickrate, translate_surface, user_input},
 };
@@ -28,9 +24,6 @@ pub struct Engine {
 
   pub tickrate: tickrate::Tickrate,
   pub render_task: render::RenderTask,
-
-  pub task_service: tasks::TaskService,
-  pub loop_group: LoopGroup,
 
   pub gpu_time: GpuTime,
   pub engine_start_time: time::Instant,
@@ -68,9 +61,6 @@ impl Engine {
       texture::TextureBundle::new(&drivers).expect("failed to load texture bundle");
 
     let render_task = render::RenderTask::new().expect("failed to load rendertask");
-
-    let loop_group = LoopGroup::new(Duration::from_secs_f64(1.0));
-
     let cam = camera::GpuCamera::new(&drivers.device, window.size());
 
     let gpu_time = sync_data::create_time_bind_group(&drivers.device);
@@ -79,7 +69,6 @@ impl Engine {
     data_bindgroups.add_bind(cam.camera_bind_group_layout.clone());
     data_bindgroups.add_bind(gpu_time.layout.clone());
 
-    let task_service = tasks::TaskService::new(translate_surface::SyncWindow(window.clone()));
     let tickrate = tickrate::Tickrate::new();
 
     let user_input = user_input::MovementHandler::new(sdl_handle, window.clone());
@@ -89,24 +78,17 @@ impl Engine {
       texture_bundle,
       data_bindgroups,
       camera: cam,
-      task_service,
       tickrate,
       drivers,
-
       gpu_time,
       engine_start_time: time::Instant::now(),
-
       user_input,
-
-      loop_group,
       is_running: true,
     }
   }
 
   pub async fn new(sdl_handle: &SdlHandle, window: Arc<sdl3::video::Window>) -> Self {
-    let mut engine = Self::new_closed(sdl_handle, window).await;
-    init_tasks(&mut engine);
-
+    let engine = Self::new_closed(sdl_handle, window).await;
     return engine;
   }
 
