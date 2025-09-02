@@ -3,6 +3,8 @@ use std::ffi::OsStr;
 use std::io::{BufReader, Cursor};
 use std::sync::Arc;
 
+use cgmath::{Rotation, Rotation3};
+
 use crate::files::{self, load_obj_str};
 use crate::gpu::device_drivers::Drivers;
 use crate::gpu::geometry::{GetBufferLayout, ModelVertex, Vertex, VertexTrait};
@@ -19,7 +21,7 @@ trait Object3D {
   const OBJECT_UP: Vec3 = WORLD_UP;
   const OBJECT_RIGHT: Vec3 = WORLD_RIGHT;
 
-  const DEFAULT_ROTATION: Rot = Rot::new(0.0, 0.0, 0.0, 0.0);
+  const DEFAULT_ROTATION: Rot = Rot::new(1.0, 0.0, 0.0, 0.0);
   const DEFAULT_POSITION: Vec3 = Vec3::new(0.0, 0.0, 0.0);
 
   fn get_pos(&self) -> &Vec3;
@@ -90,8 +92,11 @@ pub struct SharedLocation {
 }
 
 impl SharedLocation {
+  
   pub fn inc_x(&mut self) {
-    self.shared_known.borrow_mut().pos.x += 0.001;
+    let rot_factor: cgmath::Quaternion<f32> = cgmath::Quaternion::from_angle_z(cgmath::Deg(10.0));
+    let current_rot = self.shared_known.borrow().rot.clone();
+    self.shared_known.borrow_mut().rot = rot_factor * current_rot;
   }
 
   #[inline]
