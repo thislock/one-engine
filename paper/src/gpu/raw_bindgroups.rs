@@ -1,5 +1,7 @@
 use wgpu::BindGroupLayout;
 
+use crate::gpu::geometry::GetBufferLayout;
+
 pub struct BindGroups {
   binds: Vec<wgpu::BindGroupLayout>,
 }
@@ -9,8 +11,8 @@ impl BindGroups {
     Self { binds: vec![] }
   }
 
-  pub fn add_bind(&mut self, bind_group: BindGroupLayout) {
-    self.binds.push(bind_group);
+  pub fn add_bind(&mut self, bindable: &dyn GetBufferLayout) {
+    self.binds.push(bindable.get_bind_layout());
   }
 
   pub fn collect_slice<'a>(&self) -> Vec<&BindGroupLayout> {

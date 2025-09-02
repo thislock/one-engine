@@ -9,6 +9,9 @@ struct GpuTime {
 @group(2) @binding(0)
 var<uniform> time: GpuTime;
 
+@group(3) @binding(0)
+var<uniform> position_matrix: ObjectPosUniform;
+
 struct VertexInput {
     @location(0) position: vec3f,
     @location(1) tex_coords: vec2f,

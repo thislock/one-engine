@@ -4,7 +4,10 @@ use anyhow::{Error, Ok};
 use image::GenericImageView;
 use wgpu::{BindGroup, BindGroupLayout};
 
-use crate::{files, gpu::device_drivers::Drivers};
+use crate::{
+  files,
+  gpu::{device_drivers::Drivers, geometry::GetBufferLayout},
+};
 
 #[derive(Clone)]
 pub struct DynamicTexture {
@@ -208,13 +211,15 @@ pub struct TextureBundle {
   texture_bind_group_layout: BindGroupLayout,
 }
 
+impl GetBufferLayout for TextureBundle {
+  fn get_bind_layout(&self) -> wgpu::BindGroupLayout {
+    return self.texture_bind_group_layout.clone();
+  }
+}
+
 impl TextureBundle {
   pub fn get_fallback_texture(&self) -> Arc<ImageTexture> {
     return self.fallback_texture.clone();
-  }
-
-  pub fn get_texture_bind_group(&self) -> &BindGroupLayout {
-    return &self.texture_bind_group_layout;
   }
 
   pub fn get_texture_bind(&self, label: &str) -> &BindGroup {

@@ -1,4 +1,3 @@
-
 use wgpu::{VertexBufferLayout};
 
 pub trait VertexTrait {
@@ -10,6 +9,10 @@ pub trait VertexTrait {
 }
 
 pub type Vertex = Box<dyn VertexTrait>;
+
+pub trait GetBufferLayout {
+  fn get_bind_layout(&self) -> wgpu::BindGroupLayout;
+}
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -55,4 +58,3 @@ pub fn vertex_list_as_bytes(vertex_list: &Vec<Vertex>) -> Vec<u8> {
   }
   return vertex_bytes;
 }
-

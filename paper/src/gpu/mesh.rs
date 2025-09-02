@@ -1,9 +1,9 @@
-
 use std::sync::Arc;
 
 use wgpu::{util::DeviceExt, RenderPass};
 use crate::gpu::geometry::{Vertex, vertex_list_as_bytes};
 use crate::gpu::object::SharedLocation;
+use crate::gpu::render::{self, RenderTask};
 use crate::{
   engine,
   gpu::{
@@ -12,7 +12,6 @@ use crate::{
     material::Material,
   },
 };
-
 
 pub struct MeshBuilder {
   vertices: Vec<Vertex>,
@@ -27,7 +26,12 @@ impl MeshBuilder {
     }
   }
 
-  pub fn build(self, drivers: &Drivers, material: Material, object_location: SharedLocation) -> anyhow::Result<Mesh> {
+  pub fn build(
+    self,
+    drivers: &Drivers,
+    material: Material,
+    object_location: SharedLocation,
+  ) -> anyhow::Result<Mesh> {
     let mesh = Mesh::new(self, &drivers.device, material, object_location);
     Ok(mesh)
   }
@@ -65,7 +69,12 @@ impl Mesh {
     index_buffer
   }
 
-  fn new(mesh_builder: MeshBuilder, device: &wgpu::Device, material: Material, object_location: SharedLocation) -> Self {
+  fn new(
+    mesh_builder: MeshBuilder,
+    device: &wgpu::Device,
+    material: Material,
+    object_location: SharedLocation,
+  ) -> Self {
     let vertex_buffer = Self::create_vertex_buffer(&mesh_builder, device);
     let index_buffer = Self::create_index_buffer(&mesh_builder, device);
 
@@ -80,10 +89,11 @@ impl Mesh {
     }
   }
 
-  fn set_bind_groups(&self, render_pass: &mut RenderPass<'_>, engine: &engine::Engine) {
-    // set the diffuse texture
-    render_pass.set_bind_group(Self::TEXTURE_BINDGROUP, &self.material.diffuse_texture, &[]);
-
+  const TEXTURE_BINDGROUP: u32 = 0;
+  const CAMERA_TRANSFORM_BINDGROUP: u32 = 1;
+  const TIME_BINDGROUP: u32 = 2;
+  const LOCATION_BINDGROUP: u32 = 3;
+  fn set_universal_bind_groups(render_pass: &mut RenderPass<'_>, engine: &engine::Engine) {
     // set the camera transform
     render_pass.set_bind_group(
       Self::CAMERA_TRANSFORM_BINDGROUP,
@@ -95,6 +105,28 @@ impl Mesh {
     render_pass.set_bind_group(Self::TIME_BINDGROUP, &engine.gpu_time.bindgroup, &[]);
   }
 
+  fn set_local_bind_groups(&self, render_pass: &mut RenderPass<'_>, engine: &engine::Engine) {
+    // dynamic position
+    RenderTask::write_to_buffer(
+      engine,
+      engine.render_task.get_location_buffer(),
+      &[self.shared_location.get_location().to_uniform()],
+    );
+    render_pass.set_bind_group(
+      Self::LOCATION_BINDGROUP,
+      engine.render_task.get_location_bindgroup(),
+      &[],
+    );
+
+    // set the diffuse texture
+    render_pass.set_bind_group(Self::TEXTURE_BINDGROUP, &self.material.diffuse_texture, &[]);
+  }
+
+  fn set_bind_groups(&self, render_pass: &mut RenderPass<'_>, engine: &engine::Engine) {
+    Self::set_universal_bind_groups(render_pass, engine);
+    self.set_local_bind_groups(render_pass, engine);
+  }
+
   fn set_geometry_buffers(&self, render_pass: &mut RenderPass<'_>) {
     render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
     render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
@@ -104,23 +136,15 @@ impl Mesh {
     render_pass.draw_indexed(0..self.num_indicies, 0, 0..1);
   }
 
-  const TEXTURE_BINDGROUP: u32 = 0;
-  const CAMERA_TRANSFORM_BINDGROUP: u32 = 1;
-  const TIME_BINDGROUP: u32 = 2;
-
   pub fn render_meshes(
     meshes: &Vec<Arc<Self>>,
     render_pass: &mut RenderPass<'_>,
     engine: &engine::Engine,
   ) {
-    // will need to remove later, for now everything shares bindgroups, so i don't need to set it every time
-    if meshes.get(0).is_none() {
-      return;
-    }
-    let mesh1 = meshes.get(0).unwrap();
-    mesh1.set_bind_groups(render_pass, engine);
+    Self::set_universal_bind_groups(render_pass, engine);
 
     for mesh in meshes {
+      mesh.set_local_bind_groups(render_pass, engine);
       mesh.set_geometry_buffers(render_pass);
       mesh.submit_for_rendering(render_pass);
     }

@@ -5,7 +5,9 @@ use sdl3::{
 };
 
 use crate::{
-  gpu::object::{Location, ObjectBuilder, SharedLocation}, maths::Vec3, window::{sdl_handle::SdlHandle, tickrate, user_input::MovementHandler}
+  gpu::object::{Location, ObjectBuilder, SharedLocation},
+  maths::Vec3,
+  window::{sdl_handle::SdlHandle, tickrate, user_input::MovementHandler},
 };
 
 pub mod files;
@@ -77,7 +79,7 @@ impl EngineRuntime {
 
     let mut benchmark = tickrate::TimeMeasurer::new();
 
-    let mut shared = Location::from_pos(Vec3::new(100.0, 0.0, 0.0)).to_shared();
+    let mut shared = Location::from_pos(Vec3::new(0.0, 0.0, 0.0)).to_shared();
 
     init_objects(&mut self.engine, &shared).await?;
 

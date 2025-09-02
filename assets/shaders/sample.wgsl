@@ -4,7 +4,7 @@ fn vs_main(
     model: VertexInput,
 ) -> VertexOutput {
     var out: VertexOutput;
-    out.clip_position = get_camera_projection(model);
+    out.clip_position = get_projection(model);
     out.tex_coords = model.tex_coords;
     out.normal = model.normal;
     return out;

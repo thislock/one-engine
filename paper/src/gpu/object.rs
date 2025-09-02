@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use crate::files::{self, load_obj_str};
 use crate::gpu::device_drivers::Drivers;
-use crate::gpu::geometry::{ModelVertex, Vertex, VertexTrait};
+use crate::gpu::geometry::{GetBufferLayout, ModelVertex, Vertex, VertexTrait};
 use crate::gpu::texture::TextureBundle;
 use crate::gpu::{material, mesh};
 use crate::maths::Vec3;
@@ -40,38 +40,47 @@ pub struct Location {
 }
 
 impl Location {
-
   pub fn to_uniform(&self) -> LocationUniform {
     use cgmath::Matrix4;
 
     // convert quaternion into a rotation matrix
     let rot_mat: Matrix4<f32> = Matrix4::from(self.rot);
-    
+
     // make a translation matrix
     let trans_mat = Matrix4::from_translation(self.pos);
-    
+
     // combine them: translate * rotate (scale can go here too if needed)
     let model = trans_mat * rot_mat;
 
     // convert into [[f32; 4]; 4] for uniforms
-    LocationUniform { location_projection: model.into() }
+    LocationUniform {
+      location_projection: model.into(),
+    }
   }
 
   #[inline]
   pub fn new_world_origin() -> Self {
-    Self { pos: Object::DEFAULT_POSITION, rot: Object::DEFAULT_ROTATION }
+    Self {
+      pos: Object::DEFAULT_POSITION,
+      rot: Object::DEFAULT_ROTATION,
+    }
   }
-  
+
   #[inline]
   pub fn from_pos(pos: Vec3) -> Self {
-    Self { pos, rot: Object::DEFAULT_ROTATION }
+    Self {
+      pos,
+      rot: Object::DEFAULT_ROTATION,
+    }
   }
 
   #[inline]
   pub fn to_shared(self) -> SharedLocation {
-    SharedLocation { last_known: self.clone(), shared_known: Arc::new(RefCell::new(self)) }
+    SharedLocation {
+      last_known: self.clone(),
+      shared_known: Arc::new(RefCell::new(self)),
+    }
   }
-
 }
 
 #[derive(Clone)]
@@ -81,9 +90,8 @@ pub struct SharedLocation {
 }
 
 impl SharedLocation {
-
   pub fn inc_x(&mut self) {
-    self.shared_known.borrow_mut().pos.x += 100.0;
+    self.shared_known.borrow_mut().pos.x += 0.001;
   }
 
   #[inline]
@@ -100,7 +108,6 @@ impl SharedLocation {
       return &self.last_known;
     }
   }
-
 }
 
 pub struct Object {
@@ -186,13 +193,12 @@ impl ObjectBuilder {
 
     Object {
       meshes: Self::arcify_vec(self.meshes),
-      shared_location: Location::new_world_origin().to_shared()
+      shared_location: Location::new_world_origin().to_shared(),
     }
   }
 }
 
 impl Object {
-
   pub fn extract_meshes(self) -> Vec<mesh::Mesh> {
     let mut extracted = Vec::with_capacity(self.meshes.capacity());
     self
@@ -272,7 +278,7 @@ impl Object {
     texture_bundle: &TextureBundle,
     drivers: &Drivers,
     models: Vec<tobj::Model>,
-    shared_location: &SharedLocation
+    shared_location: &SharedLocation,
   ) -> Vec<mesh::Mesh> {
     let meshes = models
       .into_iter()

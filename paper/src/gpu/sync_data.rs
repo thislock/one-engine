@@ -1,9 +1,17 @@
 use wgpu::util::DeviceExt;
 
+use crate::gpu::geometry::GetBufferLayout;
+
 pub struct GpuTime {
   pub bindgroup: wgpu::BindGroup,
   pub buffer: wgpu::Buffer,
   pub layout: wgpu::BindGroupLayout,
+}
+
+impl GetBufferLayout for GpuTime {
+  fn get_bind_layout(&self) -> wgpu::BindGroupLayout {
+    self.layout.clone()
+  }
 }
 
 pub fn create_time_bind_group(device: &wgpu::Device) -> GpuTime {

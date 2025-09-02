@@ -1,5 +1,9 @@
-use paper::{engine, gpu::object::{Location, ObjectBuilder}, maths::Vec3, EngineRuntime};
-
+use paper::{
+  engine,
+  gpu::object::{Location, ObjectBuilder},
+  maths::Vec3,
+  EngineRuntime,
+};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

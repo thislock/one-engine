@@ -2,7 +2,7 @@ use cgmath::{InnerSpace, Vector3};
 use wgpu::util::DeviceExt;
 
 use crate::{
-  gpu::{object},
+  gpu::{geometry::GetBufferLayout, object},
   maths,
   window::user_input::InputType,
 };
@@ -134,9 +134,15 @@ pub struct GpuCamera {
   pub camera_bind_group_layout: wgpu::BindGroupLayout,
 }
 
+impl GetBufferLayout for GpuCamera {
+  fn get_bind_layout(&self) -> wgpu::BindGroupLayout {
+    self.camera_bind_group_layout.clone()
+  }
+}
+
 impl GpuCamera {
   pub fn new(device: &wgpu::Device, size: (u32, u32)) -> Self {
-    let default_camera_position = cgmath::Point3::new(0.0, 3.0, 1.0);
+    let default_camera_position = cgmath::Point3::new(1.0, 0.0, 0.0);
     let camera = Camera::new(default_camera_position, 45.0, size);
 
     let mut camera_uniform = CameraUniform::new();
@@ -171,6 +177,7 @@ impl GpuCamera {
       }],
       label: Some("camera_bind_group"),
     });
+
     Self {
       camera,
       camera_uniform,

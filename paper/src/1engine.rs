@@ -1,13 +1,11 @@
 // gets every process and organises it's types to be ran
 
-use std::{
-  sync::Arc,
-  time,
-};
+use std::{sync::Arc, time};
 
 use crate::{
   gpu::{
-    camera, device_drivers, raw_bindgroups, render,
+    camera, device_drivers, object, raw_bindgroups,
+    render::{self, RenderTask},
     sync_data::{self, GpuTime},
     texture,
   },
@@ -54,20 +52,23 @@ impl Engine {
   }
 
   async fn new_closed(sdl_handle: &SdlHandle, window: Arc<sdl3::video::Window>) -> Self {
+
     let mut data_bindgroups = raw_bindgroups::BindGroups::new();
     let drivers = device_drivers::Drivers::new(window.clone()).await;
 
     let texture_bundle =
       texture::TextureBundle::new(&drivers).expect("failed to load texture bundle");
 
-    let render_task = render::RenderTask::new().expect("failed to load rendertask");
+    let render_task = render::RenderTask::new(&drivers);
+
     let cam = camera::GpuCamera::new(&drivers.device, window.size());
 
     let gpu_time = sync_data::create_time_bind_group(&drivers.device);
 
-    data_bindgroups.add_bind(texture_bundle.get_texture_bind_group().clone());
-    data_bindgroups.add_bind(cam.camera_bind_group_layout.clone());
-    data_bindgroups.add_bind(gpu_time.layout.clone());
+    data_bindgroups.add_bind(&texture_bundle);
+    data_bindgroups.add_bind(&cam);
+    data_bindgroups.add_bind(&gpu_time);
+    data_bindgroups.add_bind(&render_task);
 
     let tickrate = tickrate::Tickrate::new();
 
@@ -121,21 +122,20 @@ impl Engine {
       .camera
       .camera_uniform
       .update_view_proj(&self.camera.camera);
+
     // write to the camera variable on the gpu
-    self.drivers.queue.write_buffer(
+    RenderTask::write_to_buffer(
+      &self,
       &self.camera.camera_buffer,
-      0,
-      bytemuck::cast_slice(&[self.camera.camera_uniform]),
+      &[self.camera.camera_uniform],
     );
+
     // write the time variable on the gpu
     let secs_since_started = time::Instant::now()
       .duration_since(self.engine_start_time)
       .as_secs_f32();
-    self.drivers.queue.write_buffer(
-      &self.gpu_time.buffer,
-      0,
-      bytemuck::cast_slice(&[secs_since_started]),
-    );
+
+    RenderTask::write_to_buffer(&self, &self.gpu_time.buffer, &[secs_since_started]);
   }
 
   // ************************ STARTUP/CLOSING LOGIC ************************** //
