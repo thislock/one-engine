@@ -3,7 +3,7 @@
 # honestly, i dont know what difference this makes compared to auto, but it makes the compiler shut up, sooooooooooooooooooooo
 resolver = "2"
 
-members = ["paper", "pencil", "person"]
+members = [ "game","paper", "pencil", "person"]
 
 [profile.release]
 debug = true
