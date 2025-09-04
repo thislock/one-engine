@@ -10,3 +10,4 @@ pub mod render;
 pub mod shaders;
 pub mod gpu_data;
 pub mod texture;
+pub mod lights;
