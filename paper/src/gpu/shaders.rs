@@ -142,7 +142,7 @@ impl ShaderPipeline {
     device: &wgpu::Device,
     shader_module: &wgpu::ShaderModule,
     surface_config: &wgpu::SurfaceConfiguration,
-    bindgroup_data: &gpu_pointers::GpuPointerBundle,
+    bindgroup_data: &gpu_pointers::MemoryLayouts,
   ) -> wgpu::RenderPipeline {
     let render_pipeline_layout = {
       let slice = &bindgroup_data.collect_slice();
@@ -191,7 +191,7 @@ impl ShaderPipeline {
   }
 
   pub async fn from_shader(
-    bindgroups: &gpu_pointers::GpuPointerBundle,
+    bindgroups: &gpu_pointers::MemoryLayouts,
     drivers: &device_drivers::Drivers,
     shader_builder: ShaderBuilder,
   ) -> anyhow::Result<Self> {
