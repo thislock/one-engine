@@ -9,23 +9,23 @@ use crate::gpu::{
 };
 
 pub struct ShaderBundle {
-  shaders: HashMap<uuid::Uuid, ShaderPipeline>,
+  shaders: Vec<ShaderPipeline>,
 }
 
 impl ShaderBundle {
   pub fn new() -> Self {
     Self {
-      shaders: HashMap::new(),
+      shaders: Vec::new(),
     }
   }
 
   pub fn add_shader(&mut self, shader: ShaderPipeline) -> anyhow::Result<()> {
-    self.shaders.insert(uuid::Uuid::new_v4(), shader);
+    self.shaders.push(shader);
     return Ok(());
   }
 
   pub fn iter_shaders<'a>(&'a self) -> impl Iterator<Item = &'a ShaderPipeline> {
-    self.shaders.values()
+    self.shaders.iter()
   }
 }
 
