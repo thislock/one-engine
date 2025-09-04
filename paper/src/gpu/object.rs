@@ -3,8 +3,6 @@ use std::ffi::OsStr;
 use std::io::{BufReader, Cursor};
 use std::sync::Arc;
 
-use cgmath::{Rotation3};
-
 use crate::files::{self, load_obj_str};
 use crate::gpu::device_drivers::Drivers;
 use crate::gpu::geometry::{ModelVertex, Vertex, VertexTrait};
@@ -85,6 +83,7 @@ impl Location {
   }
 }
 
+// this is absolutely awful, but i don't care right now.
 #[derive(Clone)]
 pub struct SharedLocation {
   last_known: Location,
@@ -92,20 +91,25 @@ pub struct SharedLocation {
 }
 
 impl SharedLocation {
-  
-  pub fn inc_x(&mut self) {
-    let rot_factor: cgmath::Quaternion<f32> = cgmath::Quaternion::from_angle_z(cgmath::Deg(1.0));
-    let current_rot = self.shared_known.borrow().rot.clone();
-    self.shared_known.borrow_mut().rot = rot_factor * current_rot;
-  }
 
   #[inline]
   pub fn from_location(location: Location) -> Self {
     location.to_shared()
   }
 
-  pub fn get_location<'a>(&'a self) -> &'a Location {
-    // this causes a race condition, but i do not care. it seriously doesn't matter for this sort of thing.
+  pub fn modify_location(&mut self, modification: fn(&mut Location) -> ()) {
+    let loc_possible = self.shared_known.try_borrow_mut();
+    if let Ok(mut location) = loc_possible {
+      modification(&mut location);
+    } else {
+      // TODO: dont just ignore this condition
+    }
+  }
+
+  pub fn get_location_ref<'a>(&'a self) -> &'a Location {
+    // this causes a race condition, but i do not care,
+    // it seriously doesn't matter for this sort of thing.
+    // (in other words i don't wanna pollute my code with Ref<T>)
     let loc_possible = unsafe { self.shared_known.try_borrow_unguarded() };
     if let Ok(location) = loc_possible {
       return location;
@@ -122,10 +126,10 @@ pub struct Object {
 
 impl Object3D for Object {
   fn get_pos(&self) -> &Vec3 {
-    return &self.shared_location.get_location().pos;
+    return &self.shared_location.get_location_ref().pos;
   }
   fn get_rot(&self) -> &Rot {
-    return &self.shared_location.get_location().rot;
+    return &self.shared_location.get_location_ref().rot;
   }
 }
 

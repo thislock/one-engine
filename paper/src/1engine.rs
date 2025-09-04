@@ -4,9 +4,9 @@ use std::{sync::Arc, time};
 
 use crate::{
   gpu::{
-    camera, device_drivers, object, raw_bindgroups,
+    camera, device_drivers, object, gpu_pointers,
     render::{self, RenderTask},
-    sync_data::{self, GpuTime},
+    gpu_data::{self, GpuTime},
     texture,
   },
   window::{sdl_handle::SdlHandle, tickrate, translate_surface, user_input},
@@ -14,7 +14,7 @@ use crate::{
 
 pub struct Engine {
   #[allow(unused)]
-  pub data_bindgroups: raw_bindgroups::BindGroups,
+  pub data_bindgroups: gpu_pointers::GpuPointerBundle,
   pub texture_bundle: texture::TextureBundle,
 
   pub camera: camera::GpuCamera,
@@ -53,7 +53,7 @@ impl Engine {
 
   async fn new_closed(sdl_handle: &SdlHandle, window: Arc<sdl3::video::Window>) -> Self {
 
-    let mut data_bindgroups = raw_bindgroups::BindGroups::new();
+    let mut data_bindgroups = gpu_pointers::GpuPointerBundle::new();
     let drivers = device_drivers::Drivers::new(window.clone()).await;
 
     let texture_bundle =
@@ -63,7 +63,7 @@ impl Engine {
 
     let cam = camera::GpuCamera::new(&drivers.device, window.size());
 
-    let gpu_time = sync_data::create_time_bind_group(&drivers.device);
+    let gpu_time = gpu_data::create_time_bind_group(&drivers.device);
 
     data_bindgroups.add_bind(&texture_bundle);
     data_bindgroups.add_bind(&cam);

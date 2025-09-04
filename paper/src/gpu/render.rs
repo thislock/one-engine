@@ -8,7 +8,7 @@ use crate::{
     geometry::GetBufferLayout,
     mesh,
     object::{self, Object},
-    raw_bindgroups,
+    gpu_pointers,
     shaders::{ShaderBuilder, ShaderBundle, ShaderPipeline},
     texture,
   },
@@ -58,7 +58,7 @@ impl RenderTask {
     &mut self,
     object: Object,
     drivers: &device_drivers::Drivers,
-    bind_groups: &raw_bindgroups::BindGroups,
+    bind_groups: &gpu_pointers::GpuPointerBundle,
   ) -> anyhow::Result<()> {
     let shader_builder = ShaderBuilder::from_file("sample.wgsl".to_owned());
     let mut shader = ShaderPipeline::from_shader(bind_groups, drivers, shader_builder).await?;

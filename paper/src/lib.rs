@@ -1,5 +1,6 @@
 use std::sync::Arc;
 extern crate sdl3;
+use cgmath::Rotation3;
 use sdl3::{
   event::{Event, WindowEvent},
 };
@@ -86,7 +87,10 @@ impl EngineRuntime {
     while self.engine.is_running() {
       benchmark.start_measure();
 
-      shared.inc_x();
+      shared.modify_location(|loc| {
+        let rot_factor: cgmath::Quaternion<f32> = cgmath::Quaternion::from_angle_z(cgmath::Deg(1.0));
+        loc.rot = loc.rot * rot_factor;
+      });
 
       movement_buffer.clear();
 

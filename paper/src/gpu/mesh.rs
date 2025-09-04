@@ -110,7 +110,7 @@ impl Mesh {
     RenderTask::write_to_buffer(
       engine,
       engine.render_task.get_location_buffer(),
-      &[self.shared_location.get_location().to_uniform()],
+      &[self.shared_location.get_location_ref().to_uniform()],
     );
     render_pass.set_bind_group(
       Self::LOCATION_BINDGROUP,

@@ -2,11 +2,11 @@ use wgpu::BindGroupLayout;
 
 use crate::gpu::geometry::GetBufferLayout;
 
-pub struct BindGroups {
+pub struct GpuPointerBundle {
   binds: Vec<wgpu::BindGroupLayout>,
 }
 
-impl BindGroups {
+impl GpuPointerBundle {
   pub fn new() -> Self {
     Self { binds: vec![] }
   }

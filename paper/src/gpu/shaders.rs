@@ -5,7 +5,7 @@ use crate::gpu::{device_drivers::Drivers, geometry, mesh};
 use crate::gpu::{
   device_drivers,
   geometry::{ModelVertex, VertexTrait},
-  instances, raw_bindgroups, texture,
+  instances, gpu_pointers, texture,
 };
 
 pub struct ShaderBundle {
@@ -142,7 +142,7 @@ impl ShaderPipeline {
     device: &wgpu::Device,
     shader_module: &wgpu::ShaderModule,
     surface_config: &wgpu::SurfaceConfiguration,
-    bindgroup_data: &raw_bindgroups::BindGroups,
+    bindgroup_data: &gpu_pointers::GpuPointerBundle,
   ) -> wgpu::RenderPipeline {
     let render_pipeline_layout = {
       let slice = &bindgroup_data.collect_slice();
@@ -191,7 +191,7 @@ impl ShaderPipeline {
   }
 
   pub async fn from_shader(
-    bindgroups: &raw_bindgroups::BindGroups,
+    bindgroups: &gpu_pointers::GpuPointerBundle,
     drivers: &device_drivers::Drivers,
     shader_builder: ShaderBuilder,
   ) -> anyhow::Result<Self> {
