@@ -1,21 +1,15 @@
-use std::iter;
+use std::{iter, sync::Arc};
 use wgpu::{util::DeviceExt, RenderPass};
 
 use crate::{
   engine,
   gpu::{
-    device_drivers,
-    geometry::GetBufferLayout,
-    mesh,
-    object::{self, Object},
-    gpu_pointers,
-    shaders::{ShaderBuilder, ShaderBundle, ShaderPipeline},
-    texture,
+    device_drivers, geometry::GetBufferLayout, gpu_pointers, lights, mesh, object::{self, Object}, shaders::{RenderingBundle, ShaderBuilder, ShaderPipeline}, texture
   },
 };
 pub struct RenderTask {
   pub objects: Vec<Object>,
-  shaders: ShaderBundle,
+  scene: RenderingBundle,
 
   object_location_bindgroup: wgpu::BindGroup,
   object_location_layout: wgpu::BindGroupLayout,
@@ -67,9 +61,34 @@ impl RenderTask {
       shader.meshes.push(mesh);
     }
 
-    self.objects.push(object);
-    self.shaders.add_shader(shader)?;
+    self.update_lights(&object.meshes);
 
+    self.objects.push(object);
+    self.scene.add_shader(shader)?;
+
+    Ok(())
+  }
+
+  // kinda a bad way to do that, i would rather store a universal mesh list or something
+  fn update_lights(&mut self, meshes: &Vec<Arc<mesh::Mesh>>) {
+    for light in self.scene.iter_mut_lights() {
+      for mesh in meshes {
+        light.add_mesh(mesh.clone());
+      }
+    }
+  }
+
+  pub fn add_light(
+    &mut self,
+    drivers: &device_drivers::Drivers,
+    location: object::Location,
+    color: [f32;3],
+    shader: ShaderBuilder,
+  ) -> anyhow::Result<()> {
+    let shader = shader.build(drivers).ok_or("failed to compile shader").unwrap();
+    let light = lights::Light::new_colored(drivers, &self.scene, shader, location, color);
+    self.scene.add_light(light);
+    
     Ok(())
   }
 
@@ -135,7 +154,7 @@ impl RenderTask {
       Self::init_object_bindings(drivers);
     Self {
       objects: vec![],
-      shaders: ShaderBundle::new(),
+      scene: RenderingBundle::new(),
 
       object_location_bindgroup,
       object_location_buffer,
@@ -144,8 +163,10 @@ impl RenderTask {
   }
 
   fn render_buffers(&self, mut render_pass: RenderPass<'_>, engine: &engine::Engine) {
+    // calculate lighting
+
     // loop through each shader, and render it's corresponding objects.
-    for shader in self.shaders.iter_shaders() {
+    for shader in self.scene.iter_shaders() {
       render_pass.set_pipeline(&shader.render_pipeline);
       mesh::Mesh::render_meshes(&shader.meshes, &mut render_pass, engine);
     }

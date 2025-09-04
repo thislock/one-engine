@@ -1,13 +1,13 @@
 pub mod camera;
 pub mod device_drivers;
 pub mod geometry;
+pub mod gpu_data;
+pub mod gpu_pointers;
 pub mod instances;
+pub mod lights;
 pub mod material;
 pub mod mesh;
 pub mod object;
-pub mod gpu_pointers;
 pub mod render;
 pub mod shaders;
-pub mod gpu_data;
 pub mod texture;
-pub mod lights;

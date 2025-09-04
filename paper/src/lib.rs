@@ -6,7 +6,7 @@ use sdl3::{
 };
 
 use crate::{
-  gpu::object::{Location, ObjectBuilder, SharedLocation},
+  gpu::{object::{Location, ObjectBuilder, SharedLocation}, shaders::ShaderBuilder},
   maths::Vec3,
   window::{sdl_handle::SdlHandle, tickrate, user_input::MovementHandler},
 };
@@ -82,13 +82,18 @@ impl EngineRuntime {
 
     let mut shared = Location::from_pos(Vec3::new(0.0, 0.0, 0.0)).to_shared();
 
+    let loc = Location::new_world_origin();
+    let shader = ShaderBuilder::from_file("light.wgsl".to_owned());
+    self.engine.render_task.add_light(&self.engine.drivers, loc, [1.0, 0.0, 0.0], shader)?;
+
     init_objects(&mut self.engine, &shared).await?;
 
     while self.engine.is_running() {
       benchmark.start_measure();
 
       shared.modify_location(|loc| {
-        let rot_factor: cgmath::Quaternion<f32> = cgmath::Quaternion::from_angle_z(cgmath::Deg(1.0));
+        let rot_factor: cgmath::Quaternion<f32> =
+          cgmath::Quaternion::from_angle_z(cgmath::Deg(1.0));
         loc.rot = loc.rot * rot_factor;
       });
 

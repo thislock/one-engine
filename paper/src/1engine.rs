@@ -52,7 +52,6 @@ impl Engine {
   }
 
   async fn new_closed(sdl_handle: &SdlHandle, window: Arc<sdl3::video::Window>) -> Self {
-
     let mut data_bindgroups = gpu_pointers::MemoryLayouts::new();
     let drivers = device_drivers::Drivers::new(window.clone()).await;
 

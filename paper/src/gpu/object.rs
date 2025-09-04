@@ -91,7 +91,6 @@ pub struct SharedLocation {
 }
 
 impl SharedLocation {
-
   #[inline]
   pub fn from_location(location: Location) -> Self {
     location.to_shared()

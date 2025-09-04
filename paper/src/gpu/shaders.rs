@@ -1,6 +1,6 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{sync::Arc};
 
-use crate::gpu::{device_drivers::Drivers, geometry, mesh};
+use crate::gpu::{device_drivers::Drivers, lights, mesh};
 #[allow(unused)]
 use crate::gpu::{
   device_drivers,
@@ -8,14 +8,16 @@ use crate::gpu::{
   instances, gpu_pointers, texture,
 };
 
-pub struct ShaderBundle {
+pub struct RenderingBundle {
   shaders: Vec<ShaderPipeline>,
+  lights: Vec<lights::Light>,
 }
 
-impl ShaderBundle {
+impl RenderingBundle {
   pub fn new() -> Self {
     Self {
       shaders: Vec::new(),
+      lights: Vec::new(),
     }
   }
 
@@ -24,8 +26,26 @@ impl ShaderBundle {
     return Ok(());
   }
 
+  pub fn add_light(&mut self, light: lights::Light) {
+    self.lights.push(light);
+  }
+
   pub fn iter_shaders<'a>(&'a self) -> impl Iterator<Item = &'a ShaderPipeline> {
     self.shaders.iter()
+  }
+
+  pub fn iter_mut_lights<'a>(&'a mut self) -> impl Iterator<Item = &'a mut lights::Light> {
+    self.lights.iter_mut()
+  }
+
+  pub fn get_meshes(&self) -> Vec<Arc<mesh::Mesh>> {
+    let mut meshes = Vec::new();
+    self.iter_shaders().for_each(|shader| {
+      shader.meshes.iter().for_each(|mesh| {
+        meshes.push(mesh.clone());
+      })
+    });
+    return meshes;
   }
 }
 
@@ -138,7 +158,7 @@ impl ShaderPipeline {
   }
 
   /* SHADER PIPELINE CONSTRUCTER */
-  fn init_render_pipeline(
+  pub fn init_render_pipeline(
     device: &wgpu::Device,
     shader_module: &wgpu::ShaderModule,
     surface_config: &wgpu::SurfaceConfiguration,
